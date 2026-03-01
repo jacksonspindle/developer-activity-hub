@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
 
     const response: DayDetailResponse = {
       date,
-      totalTokens: dayUsage?.tokens ?? sessions.reduce((sum, s) => sum + s.totalTokens, 0),
-      totalSessions: dayUsage?.sessions ?? sessions.length,
-      totalMessages: dayUsage?.messages ?? sessions.reduce((sum, s) => sum + s.messageCount, 0),
-      totalToolCalls: dayUsage?.toolCalls ?? sessions.reduce((sum, s) => sum + s.toolCallCount, 0),
+      totalTokens: dayUsage?.tokens || sessions.reduce((sum, s) => sum + s.totalTokens, 0),
+      totalSessions: dayUsage?.sessions || sessions.length,
+      totalMessages: dayUsage?.messages || sessions.reduce((sum, s) => sum + s.messageCount, 0),
+      totalToolCalls: dayUsage?.toolCalls || sessions.reduce((sum, s) => sum + s.toolCallCount, 0),
       sessions,
       hasSessionData: sessions.length > 0,
       daySummary: daySummary ?? undefined,
