@@ -7,6 +7,7 @@ import { HeroStats } from "@/components/hero-stats";
 import { StatCard } from "@/components/stat-card";
 import { CombinedTimeline } from "@/components/combined-timeline";
 import { YearHeatmap } from "@/components/year-heatmap";
+import { BlendedYearHeatmap } from "@/components/blended-year-heatmap";
 import { StreakAchievements } from "@/components/streak-achievements";
 import { RepoBreakdown } from "@/components/repo-breakdown";
 import { PRIssueStats } from "@/components/pr-issue-stats";
@@ -210,6 +211,13 @@ export default function Home() {
                 )}
               </div>
             )}
+
+            {/* Row 4b: Blended heatmap */}
+            <BlendedYearHeatmap
+              claudeData={claudeHeatmapData}
+              githubData={githubHeatmapData}
+              onDayClick={setSelectedDate}
+            />
 
             {/* Row 5: Streaks + Repos */}
             {githubData ? (
