@@ -75,12 +75,42 @@ export function CombinedTimeline({ data, onDayClick }: CombinedTimelineProps) {
   );
 
   const filteredData = useMemo(() => {
-    if (range === "all") return data;
-    const days = range === "30d" ? 30 : 90;
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    const cutoffStr = cutoff.toLocaleDateString("en-CA");
-    return data.filter((d) => d.date >= cutoffStr);
+    // Build a lookup from existing data
+    const lookup = new Map<string, CombinedDailyData>();
+    for (const d of data) lookup.set(d.date, d);
+
+    // Determine date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let startDate: Date;
+
+    if (range === "all") {
+      // Find the earliest date across all data
+      if (data.length === 0) return [];
+      startDate = new Date(data[0].date + "T00:00:00");
+    } else {
+      const days = range === "30d" ? 30 : 90;
+      startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - days);
+    }
+
+    // Fill in every date in the range
+    const result: CombinedDailyData[] = [];
+    const d = new Date(startDate);
+    while (d <= today) {
+      const dateStr = d.toLocaleDateString("en-CA");
+      const existing = lookup.get(dateStr);
+      result.push(existing ?? {
+        date: dateStr,
+        tokens: 0,
+        commits: 0,
+        prsOpened: 0,
+        prsMerged: 0,
+        issuesCreated: 0,
+      });
+      d.setDate(d.getDate() + 1);
+    }
+    return result;
   }, [data, range]);
 
   const toggleSeries = (key: string) => {

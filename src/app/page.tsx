@@ -6,8 +6,7 @@ import { useGitHubStats } from "@/hooks/use-github-stats";
 import { HeroStats } from "@/components/hero-stats";
 import { StatCard } from "@/components/stat-card";
 import { CombinedTimeline } from "@/components/combined-timeline";
-import { YearHeatmap } from "@/components/year-heatmap";
-import { BlendedYearHeatmap } from "@/components/blended-year-heatmap";
+import { UnifiedYearHeatmap } from "@/components/unified-year-heatmap";
 import { StreakAchievements } from "@/components/streak-achievements";
 import { RepoBreakdown } from "@/components/repo-breakdown";
 import { PRIssueStats } from "@/components/pr-issue-stats";
@@ -184,36 +183,8 @@ export default function Home() {
               onDayClick={setSelectedDate}
             />
 
-            {/* Row 4: Year heatmaps */}
-            <YearHeatmap
-              title="Claude Activity"
-              subtitle="Token usage this year"
-              data={claudeHeatmapData}
-              color="green"
-              onDayClick={setSelectedDate}
-            />
-            {githubData ? (
-              <YearHeatmap
-                title="GitHub Activity"
-                subtitle="Commits, PRs & issues this year"
-                data={githubHeatmapData}
-                color="blue"
-                onDayClick={setSelectedDate}
-              />
-            ) : (
-              <div className="col-span-1 md:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
-                {githubLoading ? (
-                  <Skeleton className="h-[180px] rounded-xl" />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">GitHub data unavailable</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Row 4b: Blended heatmap */}
-            <BlendedYearHeatmap
+            {/* Row 4: Unified year heatmap */}
+            <UnifiedYearHeatmap
               claudeData={claudeHeatmapData}
               githubData={githubHeatmapData}
               onDayClick={setSelectedDate}
@@ -260,6 +231,7 @@ export default function Home() {
                 prsMerged={githubData.totals.prsMerged}
                 prsReviewed={githubData.totals.prsReviewed}
                 issuesCreated={githubData.totals.issuesCreated}
+                items={githubData.items}
               />
             ) : (
               <div className="col-span-1 md:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
