@@ -39,6 +39,25 @@ export interface Achievement {
   progress?: { current: number; target: number };
 }
 
+export interface PRDetailItem {
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  action: "opened" | "merged" | "reviewed";
+  createdAt: string;
+}
+
+export interface IssueDetailItem {
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  createdAt: string;
+}
+
 export interface GitHubBulkStats {
   fetchedAt: string;
   username: string;
@@ -50,6 +69,12 @@ export interface GitHubBulkStats {
     prsMerged: number;
     prsReviewed: number;
     issuesCreated: number;
+  };
+  items: {
+    prsOpened: PRDetailItem[];
+    prsMerged: PRDetailItem[];
+    prsReviewed: PRDetailItem[];
+    issuesCreated: IssueDetailItem[];
   };
   repos: RepoStats[];
   streaks: StreakData;

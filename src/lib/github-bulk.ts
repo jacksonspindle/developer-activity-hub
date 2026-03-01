@@ -6,6 +6,8 @@ import type {
   GitHubDailyAggregate,
   RepoStats,
   GitHubBulkStats,
+  PRDetailItem,
+  IssueDetailItem,
 } from "./github-types";
 import { calculateStreaks, computeAchievements } from "./achievements";
 import { loadUsageData } from "./parse-stats";
@@ -320,6 +322,58 @@ export async function loadGitHubBulkStats(): Promise<GitHubBulkStats> {
     issuesCreated: issuesCreated.length,
   };
 
+  function toRepoName(repoUrl: string): string {
+    return repoUrl.replace("https://api.github.com/repos/", "");
+  }
+
+  const prOpenedItems: PRDetailItem[] = prsOpened.map((pr) => ({
+    repo: toRepoName(pr.repository_url),
+    number: pr.number,
+    title: pr.title,
+    url: pr.html_url,
+    state: pr.state,
+    action: "opened" as const,
+    createdAt: pr.created_at,
+  }));
+
+  const prMergedItems: PRDetailItem[] = prsOpened
+    .filter((pr) => prsMergedSet.has(pr.html_url))
+    .map((pr) => ({
+      repo: toRepoName(pr.repository_url),
+      number: pr.number,
+      title: pr.title,
+      url: pr.html_url,
+      state: pr.state,
+      action: "merged" as const,
+      createdAt: pr.created_at,
+    }));
+
+  const prReviewedItems: PRDetailItem[] = prsReviewed.map((pr) => ({
+    repo: toRepoName(pr.repository_url),
+    number: pr.number,
+    title: pr.title,
+    url: pr.html_url,
+    state: pr.state,
+    action: "reviewed" as const,
+    createdAt: pr.created_at,
+  }));
+
+  const issueItems: IssueDetailItem[] = issuesCreated.map((issue) => ({
+    repo: toRepoName(issue.repository_url),
+    number: issue.number,
+    title: issue.title,
+    url: issue.html_url,
+    state: issue.state,
+    createdAt: issue.created_at,
+  }));
+
+  const items = {
+    prsOpened: prOpenedItems,
+    prsMerged: prMergedItems,
+    prsReviewed: prReviewedItems,
+    issuesCreated: issueItems,
+  };
+
   // Load Claude data for combined streaks
   let claudeDaily: { date: string; tokens: number }[] = [];
   try {
@@ -340,6 +394,7 @@ export async function loadGitHubBulkStats(): Promise<GitHubBulkStats> {
     dateRange: { start, end },
     daily,
     totals,
+    items,
     repos,
     streaks,
     achievements,

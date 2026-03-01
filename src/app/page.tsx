@@ -231,7 +231,6 @@ export default function Home() {
                 prsMerged={githubData.totals.prsMerged}
                 prsReviewed={githubData.totals.prsReviewed}
                 issuesCreated={githubData.totals.issuesCreated}
-                items={githubData.items}
               />
             ) : (
               <div className="col-span-1 md:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
