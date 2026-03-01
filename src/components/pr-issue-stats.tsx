@@ -118,9 +118,9 @@ function DetailModal({
 
   return (
     <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-white/[0.08] bg-[#0c1220]/80 backdrop-blur-3xl sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col shadow-2xl shadow-black/60">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent" />
-        <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/[0.02] to-transparent" />
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-white/[0.06] to-transparent" />
 
         <DialogHeader className="relative">
           <DialogTitle className="text-white text-lg flex items-center gap-2">
@@ -135,7 +135,7 @@ function DetailModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto pr-1 space-y-1.5 -mx-1 px-1">
+        <div className="overflow-y-auto pr-1 space-y-1.5 -mx-1 px-1 min-h-0 flex-1">
           {list.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-8">No items</p>
           )}
@@ -145,7 +145,13 @@ function DetailModal({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 group hover:bg-white/[0.06] hover:border-white/[0.1] transition-all"
+              className="flex items-start gap-3 rounded-xl p-3 group hover:brightness-125 transition-all"
+              style={{
+                background: "rgba(255, 255, 255, 0.03)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+              }}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 mb-0.5">
@@ -179,7 +185,7 @@ export function PRIssueStats({
 
   return (
     <>
-      <BentoCard span={2} mobileSpan={2}>
+      <BentoCard>
         <div className="mb-3">
           <h3 className="text-lg font-semibold">PR & Issue Stats</h3>
           <p className="text-xs text-gray-500">Pull request and issue activity (90 days)</p>

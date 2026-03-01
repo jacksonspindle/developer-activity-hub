@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -46,9 +47,17 @@ function ActionBadge({ action, color }: { action: string; color: string }) {
 
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`relative rounded-xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl overflow-hidden ${className}`}>
+    <div
+      className={`relative rounded-xl overflow-hidden ${className}`}
+      style={{
+        background: "rgba(255, 255, 255, 0.03)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+      }}
+    >
       {/* Top highlight */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
       <div className="p-3.5">
         {children}
       </div>
@@ -296,7 +305,15 @@ function SessionCard({ session }: { session: ArchivedSession }) {
 
 function MiniStat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] px-2 py-1.5 text-center">
+    <div
+      className="rounded-lg px-2 py-1.5 text-center"
+      style={{
+        background: "rgba(255, 255, 255, 0.03)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: "1px solid rgba(255, 255, 255, 0.06)",
+      }}
+    >
       <p className={`text-xs font-semibold font-mono ${color}`}>{value}</p>
       <p className="text-[8px] text-gray-500 uppercase tracking-wider">{label}</p>
     </div>
@@ -329,11 +346,11 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
 
   return (
     <Dialog open={!!date} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-white/[0.08] bg-[#0c1220]/80 backdrop-blur-3xl sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl shadow-black/60">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         {/* Top highlight line */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         {/* Subtle inner glow */}
-        <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/[0.02] to-transparent" />
+        <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-white/[0.06] to-transparent" />
 
         <DialogHeader className="relative">
           <DialogTitle className="text-white text-lg">
@@ -363,7 +380,7 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
         )}
 
         {data && !loading && (
-          <div className="flex flex-col gap-4 overflow-y-auto pr-1 relative">
+          <div className="flex flex-col gap-4 overflow-y-auto pr-1 relative min-h-0 flex-1">
             {/* Summary bento grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <SummaryCard
@@ -429,8 +446,15 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
                 Sessions ({data.sessions.length})
               </p>
             )}
-            {data.sessions.map((session) => (
-              <SessionCard key={session.sessionId} session={session} />
+            {data.sessions.map((session, i) => (
+              <motion.div
+                key={session.sessionId}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.05 }}
+              >
+                <SessionCard session={session} />
+              </motion.div>
             ))}
           </div>
         )}
@@ -466,8 +490,16 @@ function SummaryCard({
   };
 
   return (
-    <div className={`relative rounded-xl bg-white/[0.03] border ${borderMap[glowColor] || "border-white/[0.06]"} backdrop-blur-xl p-3 text-center shadow-lg ${glowMap[glowColor] || ""} overflow-hidden`}>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+    <div
+      className={`relative rounded-xl p-3 text-center shadow-lg ${glowMap[glowColor] || ""} overflow-hidden`}
+      style={{
+        background: "rgba(255, 255, 255, 0.04)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: `1px solid rgba(255, 255, 255, 0.08)`,
+      }}
+    >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
       <p className={`text-lg font-bold font-mono ${color}`}>{value}</p>
       <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
         {label}
