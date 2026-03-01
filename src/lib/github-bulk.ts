@@ -17,7 +17,7 @@ const CACHE_PATH = path.join(process.cwd(), "data", "github-bulk-stats.json");
 const USERNAME = "jacksonspindle";
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
-const LANGUAGE_COLORS: Record<string, string> = {
+export const LANGUAGE_COLORS: Record<string, string> = {
   TypeScript: "#3178c6",
   JavaScript: "#f1e05a",
   Python: "#3572A5",
