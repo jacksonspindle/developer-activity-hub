@@ -26,11 +26,13 @@ const colorStyles: Record<StatColor, { bg: string; text: string; border: string;
 export function StatCard({ label, value, icon: Icon, info, color = "green" }: StatCardProps) {
   const styles = colorStyles[color];
   return (
-    <div className={cn(
-      "group relative rounded-2xl border bg-[#111827]/60 backdrop-blur-3xl p-4 shadow-xl transition-all duration-300 hover:bg-[#111827]/80 hover:border-white/[0.1]",
-      "border-white/[0.06]",
-      styles.shadow
-    )}>
+    <div
+      className={cn(
+        "group relative rounded-2xl border bg-[#111827]/60 backdrop-blur-3xl p-4 shadow-xl transition-all duration-300 hover:bg-[#111827]/80 hover:border-white/[0.1]",
+        "border-white/[0.06]",
+        styles.shadow
+      )}
+    >
       <div className="pointer-events-none absolute inset-[1px] rounded-[15px] border border-white/[0.03]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
       <div className="relative flex items-center gap-3">

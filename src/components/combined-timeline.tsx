@@ -145,7 +145,7 @@ export function CombinedTimeline({ data, onDayClick }: CombinedTimelineProps) {
   const showIssues = visibleSeries.has("issuesCreated");
 
   return (
-    <BentoCard span={4} mobileSpan={2}>
+    <BentoCard>
       {/* Header with controls */}
       <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

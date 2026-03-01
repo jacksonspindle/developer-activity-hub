@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { Info } from "lucide-react";
 
 export function InfoTooltip({ text }: { text: string }) {
@@ -30,23 +31,30 @@ export function InfoTooltip({ text }: { text: string }) {
       >
         <Info className="h-3 w-3" />
       </span>
-      {open &&
-        typeof document !== "undefined" &&
+      {typeof document !== "undefined" &&
         createPortal(
-          <span
-            className="fixed w-60 rounded-xl border border-white/[0.12] bg-[#0c1220]/95 backdrop-blur-2xl px-3 py-2 text-xs text-gray-300 shadow-2xl shadow-black/60 text-left font-normal normal-case tracking-normal leading-relaxed pointer-events-none"
-            style={{
-              left: coords.x,
-              top: coords.y,
-              transform: "translateX(-50%)",
-              zIndex: 99999,
-            }}
-          >
-            {text}
-            <span
-              className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#0c1220]"
-            />
-          </span>,
+          <AnimatePresence>
+            {open && (
+              <motion.span
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.15 }}
+                className="fixed w-60 rounded-xl border border-white/[0.12] bg-[#0c1220]/95 backdrop-blur-2xl px-3 py-2 text-xs text-gray-300 shadow-2xl shadow-black/60 text-left font-normal normal-case tracking-normal leading-relaxed pointer-events-none"
+                style={{
+                  left: coords.x,
+                  top: coords.y,
+                  transform: "translateX(-50%)",
+                  zIndex: 99999,
+                }}
+              >
+                {text}
+                <span
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#0c1220]"
+                />
+              </motion.span>
+            )}
+          </AnimatePresence>,
           document.body
         )}
     </span>

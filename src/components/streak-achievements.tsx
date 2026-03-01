@@ -93,7 +93,7 @@ function AchievementBadge({ a }: { a: Achievement }) {
 
 export function StreakAchievements({ streaks, achievements }: StreakAchievementsProps) {
   return (
-    <BentoCard span={2} mobileSpan={2}>
+    <BentoCard>
       {/* Streaks */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-4">Streaks</h3>

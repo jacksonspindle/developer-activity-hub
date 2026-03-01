@@ -20,7 +20,7 @@ export function ModelBreakdown({ modelUsage }: ModelBreakdownProps) {
   }, 0);
 
   return (
-    <BentoCard span={2} mobileSpan={2}>
+    <BentoCard>
       <div className="mb-3">
         <h3 className="text-lg font-semibold">Model Breakdown</h3>
         <p className="text-xs text-gray-500">Token usage by model</p>

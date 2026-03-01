@@ -182,7 +182,7 @@ export function UnifiedYearHeatmap({ claudeData, githubData, onDayClick }: Unifi
 
   if (cellSize === 0) {
     return (
-      <BentoCard span={4} mobileSpan={2}>
+      <BentoCard>
         <div ref={containerRef} className="h-[180px]" />
       </BentoCard>
     );
@@ -242,7 +242,7 @@ export function UnifiedYearHeatmap({ claudeData, githubData, onDayClick }: Unifi
     : "Color blend — green is Claude, blue is GitHub";
 
   return (
-    <BentoCard span={4} mobileSpan={2}>
+    <BentoCard>
       <div className="mb-4 flex items-start justify-between flex-wrap gap-2">
         <div>
           <h3 className="text-lg font-semibold">Year Heatmap</h3>

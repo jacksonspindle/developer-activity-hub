@@ -43,7 +43,7 @@ export function ActivityHeatmap({ hourCounts }: ActivityHeatmapProps) {
   }));
 
   return (
-    <BentoCard span={2} mobileSpan={2}>
+    <BentoCard>
       <div className="mb-3">
         <h3 className="text-lg font-semibold">Activity by Hour</h3>
         <p className="text-xs text-gray-500">Session distribution across the day</p>

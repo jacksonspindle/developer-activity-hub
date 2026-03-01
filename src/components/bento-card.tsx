@@ -6,23 +6,9 @@ type Variant = "default" | "hero-green" | "hero-blue" | "accent-purple" | "accen
 
 interface BentoCardProps {
   children: React.ReactNode;
-  span?: 1 | 2 | 3 | 4;
-  mobileSpan?: 1 | 2;
   variant?: Variant;
   className?: string;
 }
-
-const spanClasses: Record<number, string> = {
-  1: "col-span-1",
-  2: "col-span-1 md:col-span-2",
-  3: "col-span-1 md:col-span-2 lg:col-span-3",
-  4: "col-span-1 md:col-span-2 lg:col-span-4",
-};
-
-const mobileSpanClasses: Record<number, string> = {
-  1: "",
-  2: "col-span-2",
-};
 
 const variantOverlay: Record<Variant, string> = {
   default: "",
@@ -50,8 +36,6 @@ const variantShadow: Record<Variant, string> = {
 
 export function BentoCard({
   children,
-  span = 1,
-  mobileSpan = 1,
   variant = "default",
   className,
 }: BentoCardProps) {
@@ -61,8 +45,6 @@ export function BentoCard({
         "group relative rounded-2xl border bg-[#111827]/60 backdrop-blur-3xl transition-all duration-300 hover:bg-[#111827]/80 hover:border-white/[0.1]",
         variantBorder[variant],
         variantShadow[variant],
-        spanClasses[span],
-        mobileSpan === 2 && mobileSpanClasses[2],
         className
       )}
     >

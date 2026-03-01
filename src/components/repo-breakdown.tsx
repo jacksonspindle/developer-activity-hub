@@ -15,7 +15,7 @@ export function RepoBreakdown({ repos }: RepoBreakdownProps) {
   );
 
   return (
-    <BentoCard span={2} mobileSpan={2}>
+    <BentoCard>
       <div className="mb-3">
         <h3 className="text-lg font-semibold">Repository Breakdown</h3>
         <p className="text-xs text-gray-500">Top repos by activity (90 days)</p>

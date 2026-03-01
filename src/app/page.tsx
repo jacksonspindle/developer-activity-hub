@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
-import { HeroStats } from "@/components/hero-stats";
+import { useDashboardLayout } from "@/hooks/use-dashboard-layout";
+import { HeroTokensCard, HeroCommitsCard } from "@/components/hero-stats";
 import { StatCard } from "@/components/stat-card";
 import { CombinedTimeline } from "@/components/combined-timeline";
 import { UnifiedYearHeatmap } from "@/components/unified-year-heatmap";
 import { StreakAchievements } from "@/components/streak-achievements";
 import { RepoBreakdown } from "@/components/repo-breakdown";
+import { RecentProjects } from "@/components/recent-projects";
 import { PRIssueStats } from "@/components/pr-issue-stats";
 import { ModelBreakdown } from "@/components/model-breakdown";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { DayDetailModal } from "@/components/day-detail-modal";
+import { DashboardGrid } from "@/components/dashboard-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CombinedDailyData } from "@/lib/github-types";
 import {
@@ -20,6 +24,9 @@ import {
   GitFork,
   GitPullRequest,
   Flame,
+  Settings2,
+  RotateCcw,
+  Check,
 } from "lucide-react";
 
 function LoadingSkeleton() {
@@ -43,6 +50,16 @@ export default function Home() {
   const { data: usageData, loading: usageLoading, error: usageError } = useUsageData();
   const { data: githubData, loading: githubLoading } = useGitHubStats();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const {
+    cardOrder,
+    cardSpans,
+    isEditMode,
+    toggleEditMode,
+    reorderCards,
+    setCardSpan,
+    resetLayout,
+  } = useDashboardLayout();
 
   const combinedDaily = useMemo<CombinedDailyData[]>(() => {
     const map = new Map<string, CombinedDailyData>();
@@ -109,6 +126,149 @@ export default function Home() {
 
   const loading = usageLoading;
 
+  const renderCard = useCallback(
+    (cardId: string): React.ReactNode => {
+      switch (cardId) {
+        case "hero-tokens":
+          return <HeroTokensCard totalTokens={usageData?.totalTokens ?? 0} />;
+        case "hero-commits":
+          return <HeroCommitsCard totalCommits={githubData?.totals.commits ?? 0} />;
+        case "stat-sessions":
+          return (
+            <StatCard
+              label="Sessions"
+              value={usageData?.totalSessions ?? 0}
+              icon={MonitorSmartphone}
+              color="green"
+              info="Total Claude Code sessions"
+            />
+          );
+        case "stat-repos":
+          return (
+            <StatCard
+              label="Repos"
+              value={githubData?.repos.length ?? 0}
+              icon={GitFork}
+              color="blue"
+              info="Active repositories in the last 90 days"
+            />
+          );
+        case "stat-prs":
+          return (
+            <StatCard
+              label="PRs Merged"
+              value={githubData?.totals.prsMerged ?? 0}
+              icon={GitPullRequest}
+              color="purple"
+              info="Pull requests merged in the last 90 days"
+            />
+          );
+        case "stat-streak":
+          return (
+            <StatCard
+              label="Streak"
+              value={githubData?.streaks.currentCombined.days ?? 0}
+              icon={Flame}
+              color="amber"
+              info="Current consecutive days with Claude or GitHub activity"
+            />
+          );
+        case "combined-timeline":
+          return (
+            <CombinedTimeline
+              data={combinedDaily}
+              onDayClick={setSelectedDate}
+            />
+          );
+        case "year-heatmap":
+          return (
+            <UnifiedYearHeatmap
+              claudeData={claudeHeatmapData}
+              githubData={githubHeatmapData}
+              onDayClick={setSelectedDate}
+            />
+          );
+        case "streaks":
+          if (!githubData) {
+            return githubLoading ? (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+                <div className="space-y-3">
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-32 rounded-xl" />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  GitHub data unavailable
+                </p>
+              </div>
+            );
+          }
+          return (
+            <StreakAchievements
+              streaks={githubData.streaks}
+              achievements={githubData.achievements}
+            />
+          );
+        case "repos":
+          if (!githubData) {
+            return githubLoading ? (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+                <Skeleton className="h-[250px] rounded-xl" />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
+                <p className="text-sm text-muted-foreground">No repository data</p>
+              </div>
+            );
+          }
+          return <RepoBreakdown repos={githubData.repos} />;
+        case "recent-projects":
+          if (!githubData) {
+            return githubLoading ? (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+                <Skeleton className="h-[250px] rounded-xl" />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
+                <p className="text-sm text-muted-foreground">No project data</p>
+              </div>
+            );
+          }
+          return <RecentProjects repos={githubData.repos} />;
+        case "pr-issues":
+          if (!githubData) {
+            return githubLoading ? (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+                <Skeleton className="h-[250px] rounded-xl" />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
+                <p className="text-sm text-muted-foreground">No PR/issue data</p>
+              </div>
+            );
+          }
+          return (
+            <PRIssueStats
+              prsOpened={githubData.totals.prsOpened}
+              prsMerged={githubData.totals.prsMerged}
+              prsReviewed={githubData.totals.prsReviewed}
+              issuesCreated={githubData.totals.issuesCreated}
+              items={githubData.items}
+            />
+          );
+        case "models":
+          return <ModelBreakdown modelUsage={usageData?.modelUsage ?? {}} />;
+        case "activity-heatmap":
+          return <ActivityHeatmap hourCounts={usageData?.hourCounts ?? {}} />;
+        default:
+          return null;
+      }
+    },
+    [usageData, githubData, githubLoading, combinedDaily, claudeHeatmapData, githubHeatmapData, setSelectedDate]
+  );
+
   return (
     <div className="min-h-screen bg-[#060a12]">
       {/* Multi-layer background */}
@@ -119,7 +279,12 @@ export default function Home() {
 
       <div className="relative mx-auto max-w-6xl px-6 py-12">
         {/* Header */}
-        <div className="mb-10 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-10 text-center"
+        >
           <div className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.06] px-3 py-1 mb-3">
             <span className="text-xs text-green-400 font-mono tracking-wider">@jacksonspindle</span>
           </div>
@@ -129,7 +294,51 @@ export default function Home() {
           <p className="mt-1 text-sm text-muted-foreground">
             Claude Code + GitHub — all in one place
           </p>
-        </div>
+
+          {/* Edit mode controls */}
+          {usageData && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <AnimatePresence mode="wait">
+                {isEditMode ? (
+                  <motion.div
+                    key="edit-controls"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="flex items-center gap-2"
+                  >
+                    <button
+                      onClick={resetLayout}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Reset
+                    </button>
+                    <button
+                      onClick={toggleEditMode}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs text-green-400 hover:bg-green-500/20 transition-all"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Done
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="customize-btn"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onClick={toggleEditMode}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
+                  >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Customize
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
 
         {usageError && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/[0.06] backdrop-blur-2xl p-4 text-center text-red-400">
@@ -140,115 +349,14 @@ export default function Home() {
         {loading && <LoadingSkeleton />}
 
         {usageData && (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {/* Row 1: Hero stats */}
-            <HeroStats
-              totalTokens={usageData.totalTokens}
-              totalCommits={githubData?.totals.commits ?? 0}
-            />
-
-            {/* Row 2: Quick stats */}
-            <StatCard
-              label="Sessions"
-              value={usageData.totalSessions}
-              icon={MonitorSmartphone}
-              color="green"
-              info="Total Claude Code sessions"
-            />
-            <StatCard
-              label="Repos"
-              value={githubData?.repos.length ?? 0}
-              icon={GitFork}
-              color="blue"
-              info="Active repositories in the last 90 days"
-            />
-            <StatCard
-              label="PRs Merged"
-              value={githubData?.totals.prsMerged ?? 0}
-              icon={GitPullRequest}
-              color="purple"
-              info="Pull requests merged in the last 90 days"
-            />
-            <StatCard
-              label="Streak"
-              value={githubData?.streaks.currentCombined.days ?? 0}
-              icon={Flame}
-              color="amber"
-              info="Current consecutive days with Claude or GitHub activity"
-            />
-
-            {/* Row 3: Combined timeline */}
-            <CombinedTimeline
-              data={combinedDaily}
-              onDayClick={setSelectedDate}
-            />
-
-            {/* Row 4: Unified year heatmap */}
-            <UnifiedYearHeatmap
-              claudeData={claudeHeatmapData}
-              githubData={githubHeatmapData}
-              onDayClick={setSelectedDate}
-            />
-
-            {/* Row 5: Streaks + Repos */}
-            {githubData ? (
-              <StreakAchievements
-                streaks={githubData.streaks}
-                achievements={githubData.achievements}
-              />
-            ) : (
-              <div className="col-span-1 md:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
-                {githubLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 rounded-xl" />
-                    <Skeleton className="h-32 rounded-xl" />
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    GitHub data unavailable
-                  </p>
-                )}
-              </div>
-            )}
-            {githubData ? (
-              <RepoBreakdown repos={githubData.repos} />
-            ) : (
-              <div className="col-span-1 md:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
-                {githubLoading ? (
-                  <Skeleton className="h-[250px] rounded-xl" />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">No repository data</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Row 6: PR/Issue stats + Model breakdown */}
-            {githubData ? (
-              <PRIssueStats
-                prsOpened={githubData.totals.prsOpened}
-                prsMerged={githubData.totals.prsMerged}
-                prsReviewed={githubData.totals.prsReviewed}
-                issuesCreated={githubData.totals.issuesCreated}
-                items={githubData.items}
-              />
-            ) : (
-              <div className="col-span-1 md:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
-                {githubLoading ? (
-                  <Skeleton className="h-[250px] rounded-xl" />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">No PR/issue data</p>
-                  </div>
-                )}
-              </div>
-            )}
-            <ModelBreakdown modelUsage={usageData.modelUsage} />
-
-            {/* Row 7: Activity by hour */}
-            <ActivityHeatmap hourCounts={usageData.hourCounts} />
-          </div>
+          <DashboardGrid
+            cardOrder={cardOrder}
+            cardSpans={cardSpans}
+            isEditMode={isEditMode}
+            onReorder={reorderCards}
+            onSpanChange={setCardSpan}
+            renderCard={renderCard}
+          />
         )}
 
         <DayDetailModal
