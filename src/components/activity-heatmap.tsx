@@ -71,7 +71,11 @@ export function ActivityHeatmap({ hourCounts }: ActivityHeatmapProps) {
               tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
               axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+              wrapperStyle={{ background: "none", border: "none", boxShadow: "none" }}
+            />
             <Bar
               dataKey="count"
               fill="url(#hourBarGradient)"
