@@ -16,8 +16,8 @@ import {
 import { BentoCard } from "@/components/bento-card";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { formatDate, formatFullDate, cn } from "@/lib/utils";
-import type { ScoreSummary, DailyScore } from "@/lib/productivity-score";
-import { SCORE_WEIGHTS, SCORE_THRESHOLDS } from "@/lib/productivity-score";
+import type { ScoreSummary, DailyScore, AdaptiveThresholds } from "@/lib/productivity-score";
+import { SCORE_WEIGHTS } from "@/lib/productivity-score";
 
 interface ProductivityScoreCardProps {
   summary: ScoreSummary;
@@ -65,12 +65,14 @@ function CustomTooltip({
   active,
   payload,
   label,
+  thresholds,
 }: {
   active?: boolean;
   payload?: Array<{ value: number; payload: DailyScore }>;
   label?: string;
+  thresholds?: AdaptiveThresholds;
 }) {
-  if (!active || !payload?.length || !label) return null;
+  if (!active || !payload?.length || !label || !thresholds) return null;
   const entry = payload[0];
   const daily = entry.payload;
 
@@ -87,7 +89,7 @@ function CustomTooltip({
         {(Object.keys(daily.breakdown) as Array<keyof typeof daily.breakdown>).map(
           (key) => {
             const raw = daily.rawValues[key];
-            const threshold = SCORE_THRESHOLDS[key];
+            const threshold = thresholds[key];
             const pct = Math.min(raw / threshold, 1) * 100;
             return (
               <div key={key} className="flex items-center gap-2 text-[11px]">
@@ -133,14 +135,14 @@ export function ProductivityScoreCard({ summary, onDayClick }: ProductivityScore
             <InfoTooltip wide>
               <div className="space-y-2.5">
                 <p className="text-gray-300 font-medium text-[11px]">
-                  Daily score (0–100) based on your dev activity, calculated as:
+                  Daily score (0–100) based on your dev activity. Thresholds adapt to your 75th percentile over the last 30 days:
                 </p>
                 <table className="w-full text-[11px]">
                   <thead>
                     <tr className="text-gray-500">
                       <th className="text-left font-medium pb-1">Factor</th>
                       <th className="text-right font-medium pb-1">Weight</th>
-                      <th className="text-right font-medium pb-1">100% at</th>
+                      <th className="text-right font-medium pb-1">Your 100%</th>
                     </tr>
                   </thead>
                   <tbody className="text-gray-400">
@@ -149,16 +151,14 @@ export function ProductivityScoreCard({ summary, onDayClick }: ProductivityScore
                         <td className="py-0.5">{FACTOR_LABELS[key]}</td>
                         <td className="text-right tabular-nums">{SCORE_WEIGHTS[key]}pts</td>
                         <td className="text-right tabular-nums">
-                          {key === "tokens"
-                            ? `${(SCORE_THRESHOLDS[key] / 1000).toFixed(0)}k`
-                            : SCORE_THRESHOLDS[key]}
+                          {formatThreshold(key, summary.thresholds[key])}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 <div className="border-t border-white/[0.06] pt-1.5 space-y-1 text-[10px] text-gray-500">
-                  <p>Each factor scales linearly from 0 → threshold, capped at its max weight.</p>
+                  <p>Thresholds = 75th percentile of your non-zero days over the last 30 days, with a minimum floor so they never get too easy.</p>
                   <p>A streak bonus of up to +10% is applied based on consecutive active days (maxes at 14 days).</p>
                 </div>
               </div>
@@ -280,7 +280,7 @@ export function ProductivityScoreCard({ summary, onDayClick }: ProductivityScore
                 fontSize: 10,
               }}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip thresholds={summary.thresholds} />} />
             <Bar
               dataKey="score"
               radius={[2, 2, 0, 0]}

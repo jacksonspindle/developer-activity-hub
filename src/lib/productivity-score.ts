@@ -10,7 +10,19 @@ export const SCORE_WEIGHTS = {
   toolCalls: 10,
 } as const;
 
-export const SCORE_THRESHOLDS = {
+// Minimum floors — adaptive thresholds can never drop below these
+export const MIN_THRESHOLDS = {
+  commits: 2,
+  prsMerged: 1,
+  prsOpened: 1,
+  issuesCreated: 1,
+  tokens: 50_000,
+  sessions: 2,
+  toolCalls: 15,
+} as const;
+
+// Fallback thresholds used when there isn't enough history
+export const DEFAULT_THRESHOLDS = {
   commits: 5,
   prsMerged: 1,
   prsOpened: 2,
@@ -43,6 +55,8 @@ export interface ScoreBreakdown {
   toolCalls: number;
 }
 
+export type AdaptiveThresholds = Record<ScoreMetric, number>;
+
 export interface DailyScore {
   date: string;
   score: number;
@@ -57,10 +71,51 @@ export interface ScoreSummary {
   current: number;
   avg7d: number;
   avg30d: number;
-  deltaVsPrevWeek: number; // percentage change
+  deltaVsPrevWeek: number;
+  thresholds: AdaptiveThresholds;
 }
 
-function computeBaseScore(input: DailyScoreInput): {
+// Compute the 75th percentile of non-zero values from the last 30 days
+function percentile75(values: number[]): number {
+  const nonZero = values.filter((v) => v > 0).sort((a, b) => a - b);
+  if (nonZero.length === 0) return 0;
+  const idx = Math.ceil(nonZero.length * 0.75) - 1;
+  return nonZero[idx];
+}
+
+export function computeAdaptiveThresholds(
+  inputs: DailyScoreInput[]
+): AdaptiveThresholds {
+  // Use last 30 days of data
+  const recent = inputs.slice(-30);
+
+  const metrics: ScoreMetric[] = [
+    "commits", "prsMerged", "prsOpened", "issuesCreated",
+    "tokens", "sessions", "toolCalls",
+  ];
+
+  const thresholds = {} as AdaptiveThresholds;
+
+  for (const metric of metrics) {
+    const values = recent.map((d) => d[metric]);
+    const p75 = percentile75(values);
+
+    if (p75 > 0) {
+      // Use 75th percentile, but never below the minimum floor
+      thresholds[metric] = Math.max(p75, MIN_THRESHOLDS[metric]);
+    } else {
+      // No data for this metric — fall back to default
+      thresholds[metric] = DEFAULT_THRESHOLDS[metric];
+    }
+  }
+
+  return thresholds;
+}
+
+function computeBaseScore(
+  input: DailyScoreInput,
+  thresholds: AdaptiveThresholds
+): {
   score: number;
   breakdown: ScoreBreakdown;
   rawValues: ScoreBreakdown;
@@ -75,15 +130,15 @@ function computeBaseScore(input: DailyScoreInput): {
     toolCalls: input.toolCalls,
   };
 
-  const breakdown: ScoreBreakdown = {
-    commits: Math.min(input.commits / SCORE_THRESHOLDS.commits, 1) * SCORE_WEIGHTS.commits,
-    prsMerged: Math.min(input.prsMerged / SCORE_THRESHOLDS.prsMerged, 1) * SCORE_WEIGHTS.prsMerged,
-    prsOpened: Math.min(input.prsOpened / SCORE_THRESHOLDS.prsOpened, 1) * SCORE_WEIGHTS.prsOpened,
-    issuesCreated: Math.min(input.issuesCreated / SCORE_THRESHOLDS.issuesCreated, 1) * SCORE_WEIGHTS.issuesCreated,
-    tokens: Math.min(input.tokens / SCORE_THRESHOLDS.tokens, 1) * SCORE_WEIGHTS.tokens,
-    sessions: Math.min(input.sessions / SCORE_THRESHOLDS.sessions, 1) * SCORE_WEIGHTS.sessions,
-    toolCalls: Math.min(input.toolCalls / SCORE_THRESHOLDS.toolCalls, 1) * SCORE_WEIGHTS.toolCalls,
-  };
+  const metrics: ScoreMetric[] = [
+    "commits", "prsMerged", "prsOpened", "issuesCreated",
+    "tokens", "sessions", "toolCalls",
+  ];
+
+  const breakdown = {} as ScoreBreakdown;
+  for (const m of metrics) {
+    breakdown[m] = Math.min(input[m] / thresholds[m], 1) * SCORE_WEIGHTS[m];
+  }
 
   const score = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
   return { score: Math.round(score * 10) / 10, breakdown, rawValues };
@@ -100,13 +155,14 @@ export function computeScoreSummary(
   inputs: DailyScoreInput[],
   streakDays: number
 ): ScoreSummary {
+  const thresholds = computeAdaptiveThresholds(inputs);
   const streakBonus = Math.min(streakDays / 14, 1) * 0.1;
 
   const dailyScores: DailyScore[] = [];
   const rawScores: number[] = [];
 
   for (const input of inputs) {
-    const { score: base, breakdown, rawValues } = computeBaseScore(input);
+    const { score: base, breakdown, rawValues } = computeBaseScore(input, thresholds);
     const final = Math.min(Math.round(base * (1 + streakBonus) * 10) / 10, 100);
     rawScores.push(final);
 
@@ -126,7 +182,6 @@ export function computeScoreSummary(
   const avg7d = len > 0 ? dailyScores[len - 1].avg7d : 0;
   const avg30d = len > 0 ? dailyScores[len - 1].avg30d : 0;
 
-  // Delta vs previous week: compare last 7d avg to the 7d avg ending 7 days ago
   let deltaVsPrevWeek = 0;
   if (len >= 8) {
     const prevWeekAvg = dailyScores[len - 8].avg7d;
@@ -135,5 +190,5 @@ export function computeScoreSummary(
     }
   }
 
-  return { daily: dailyScores, current, avg7d, avg30d, deltaVsPrevWeek };
+  return { daily: dailyScores, current, avg7d, avg30d, deltaVsPrevWeek, thresholds };
 }

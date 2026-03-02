@@ -27,7 +27,9 @@ import {
   GitPullRequest,
   Flame,
   RefreshCw,
+  CalendarDays,
 } from "lucide-react";
+import { getCurrentWeekString } from "@/lib/week-utils";
 
 function LoadingSkeleton() {
   return (
@@ -342,6 +344,13 @@ export default function Home() {
                 <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh
               </button>
+              <a
+                href={`/weekly?week=${getCurrentWeekString()}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/[0.06] px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-500/[0.1] transition-all"
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Weekly Digest
+              </a>
             </div>
           )}
         </motion.div>

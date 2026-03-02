@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ArchivedSession, GitHubDayActivity } from "./types";
+import type { TopProductiveDay, WeeklyProjectStats } from "./weekly-types";
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -83,6 +84,66 @@ Write the summary in second person ("You worked on..."). Be specific about what 
     return null;
   } catch (err) {
     console.error("AI summary generation failed:", err);
+    return null;
+  }
+}
+
+export async function generateWeeklySummary(params: {
+  weekLabel: string;
+  avgScore: number;
+  totalTokens: number;
+  totalSessions: number;
+  totalCommits: number;
+  totalPRs: number;
+  topProjects: WeeklyProjectStats[];
+  topDays: TopProductiveDay[];
+  totalCostUSD: number;
+}): Promise<string | null> {
+  if (!apiKey || apiKey === "your-api-key-here") return null;
+
+  const client = new Anthropic({ apiKey });
+
+  const projectLines = params.topProjects
+    .slice(0, 5)
+    .map((p) => `- ${p.project}: ${p.sessionCount} sessions, ${Math.round(p.totalTokens / 1000)}k tokens`)
+    .join("\n");
+
+  const topDayLines = params.topDays
+    .map((d) => `- ${d.date}: score ${Math.round(d.score)} — ${d.highlight}`)
+    .join("\n");
+
+  const prompt = `You are writing a weekly retrospective for a developer's coding activity for the week of ${params.weekLabel}. Write a brief, natural 3-5 sentence retrospective summary.
+
+Stats:
+- Average productivity score: ${Math.round(params.avgScore)}/100
+- Total tokens: ${Math.round(params.totalTokens / 1000)}k
+- Sessions: ${params.totalSessions}
+- Commits: ${params.totalCommits}
+- PRs merged: ${params.totalPRs}
+- Cost: $${params.totalCostUSD.toFixed(2)}
+
+Top projects:
+${projectLines || "No project data"}
+
+Best days:
+${topDayLines || "No scored days"}
+
+Write in second person ("You had a productive week..."). Focus on patterns and accomplishments. Be specific about projects. Keep it concise and encouraging.`;
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = response.content[0];
+    if (text.type === "text") {
+      return text.text.trim();
+    }
+    return null;
+  } catch (err) {
+    console.error("Weekly AI summary generation failed:", err);
     return null;
   }
 }
