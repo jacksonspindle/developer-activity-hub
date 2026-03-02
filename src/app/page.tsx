@@ -15,6 +15,8 @@ import { RecentProjects } from "@/components/recent-projects";
 import { PRIssueStats } from "@/components/pr-issue-stats";
 import { ModelBreakdown } from "@/components/model-breakdown";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
+import { ProductivityScoreCard } from "@/components/productivity-score-card";
+import { computeScoreSummary, type DailyScoreInput } from "@/lib/productivity-score";
 import { DayDetailModal } from "@/components/day-detail-modal";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -124,6 +126,32 @@ export default function Home() {
     return map;
   }, [githubData]);
 
+  const scoreSummary = useMemo(() => {
+    const usageLookup = new Map<string, { sessions: number; toolCalls: number }>();
+    if (usageData) {
+      for (const d of usageData.daily) {
+        usageLookup.set(d.date, { sessions: d.sessions, toolCalls: d.toolCalls });
+      }
+    }
+
+    const inputs: DailyScoreInput[] = combinedDaily.map((d) => {
+      const usage = usageLookup.get(d.date);
+      return {
+        date: d.date,
+        commits: d.commits,
+        prsMerged: d.prsMerged,
+        prsOpened: d.prsOpened,
+        issuesCreated: d.issuesCreated,
+        tokens: d.tokens,
+        sessions: usage?.sessions ?? 0,
+        toolCalls: usage?.toolCalls ?? 0,
+      };
+    });
+
+    const streakDays = githubData?.streaks.currentCombined.days ?? 0;
+    return computeScoreSummary(inputs, streakDays);
+  }, [combinedDaily, usageData, githubData]);
+
   const loading = usageLoading;
 
   const renderCard = useCallback(
@@ -173,6 +201,8 @@ export default function Home() {
               info="Current consecutive days with Claude or GitHub activity"
             />
           );
+        case "productivity-score":
+          return <ProductivityScoreCard summary={scoreSummary} />;
         case "combined-timeline":
           return (
             <CombinedTimeline
@@ -266,7 +296,7 @@ export default function Home() {
           return null;
       }
     },
-    [usageData, githubData, githubLoading, combinedDaily, claudeHeatmapData, githubHeatmapData, setSelectedDate]
+    [usageData, githubData, githubLoading, combinedDaily, claudeHeatmapData, githubHeatmapData, scoreSummary, setSelectedDate]
   );
 
   return (
