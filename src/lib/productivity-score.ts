@@ -1,13 +1,13 @@
 // Productivity Score — pure computation, no React
 
 export const SCORE_WEIGHTS = {
-  commits: 25,
-  prsMerged: 20,
-  prsOpened: 10,
+  commits: 30,
+  prsMerged: 5,
+  prsOpened: 5,
   issuesCreated: 5,
   tokens: 25,
-  sessions: 10,
-  toolCalls: 5,
+  sessions: 20,
+  toolCalls: 10,
 } as const;
 
 export const SCORE_THRESHOLDS = {
@@ -19,6 +19,8 @@ export const SCORE_THRESHOLDS = {
   sessions: 3,
   toolCalls: 30,
 } as const;
+
+export type ScoreMetric = keyof typeof SCORE_WEIGHTS;
 
 export interface DailyScoreInput {
   date: string;
@@ -45,6 +47,7 @@ export interface DailyScore {
   date: string;
   score: number;
   breakdown: ScoreBreakdown;
+  rawValues: ScoreBreakdown;
   avg7d: number;
   avg30d: number;
 }
@@ -60,7 +63,18 @@ export interface ScoreSummary {
 function computeBaseScore(input: DailyScoreInput): {
   score: number;
   breakdown: ScoreBreakdown;
+  rawValues: ScoreBreakdown;
 } {
+  const rawValues: ScoreBreakdown = {
+    commits: input.commits,
+    prsMerged: input.prsMerged,
+    prsOpened: input.prsOpened,
+    issuesCreated: input.issuesCreated,
+    tokens: input.tokens,
+    sessions: input.sessions,
+    toolCalls: input.toolCalls,
+  };
+
   const breakdown: ScoreBreakdown = {
     commits: Math.min(input.commits / SCORE_THRESHOLDS.commits, 1) * SCORE_WEIGHTS.commits,
     prsMerged: Math.min(input.prsMerged / SCORE_THRESHOLDS.prsMerged, 1) * SCORE_WEIGHTS.prsMerged,
@@ -72,7 +86,7 @@ function computeBaseScore(input: DailyScoreInput): {
   };
 
   const score = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
-  return { score: Math.round(score * 10) / 10, breakdown };
+  return { score: Math.round(score * 10) / 10, breakdown, rawValues };
 }
 
 function rollingAvg(scores: number[], endIdx: number, window: number): number {
@@ -92,7 +106,7 @@ export function computeScoreSummary(
   const rawScores: number[] = [];
 
   for (const input of inputs) {
-    const { score: base, breakdown } = computeBaseScore(input);
+    const { score: base, breakdown, rawValues } = computeBaseScore(input);
     const final = Math.min(Math.round(base * (1 + streakBonus) * 10) / 10, 100);
     rawScores.push(final);
 
@@ -101,6 +115,7 @@ export function computeScoreSummary(
       date: input.date,
       score: final,
       breakdown,
+      rawValues,
       avg7d: rollingAvg(rawScores, idx, 7),
       avg30d: rollingAvg(rawScores, idx, 30),
     });
@@ -113,12 +128,7 @@ export function computeScoreSummary(
 
   // Delta vs previous week: compare last 7d avg to the 7d avg ending 7 days ago
   let deltaVsPrevWeek = 0;
-  if (len >= 14) {
-    const prevWeekAvg = dailyScores[len - 8].avg7d;
-    if (prevWeekAvg > 0) {
-      deltaVsPrevWeek = Math.round(((avg7d - prevWeekAvg) / prevWeekAvg) * 100);
-    }
-  } else if (len >= 8) {
+  if (len >= 8) {
     const prevWeekAvg = dailyScores[len - 8].avg7d;
     if (prevWeekAvg > 0) {
       deltaVsPrevWeek = Math.round(((avg7d - prevWeekAvg) / prevWeekAvg) * 100);

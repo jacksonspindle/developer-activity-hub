@@ -208,7 +208,7 @@ export default function Home() {
             />
           );
         case "productivity-score":
-          return <ProductivityScoreCard summary={scoreSummary} />;
+          return <ProductivityScoreCard summary={scoreSummary} onDayClick={setSelectedDate} />;
         case "combined-timeline":
           return (
             <CombinedTimeline

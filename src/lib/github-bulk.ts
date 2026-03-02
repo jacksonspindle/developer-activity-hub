@@ -91,6 +91,13 @@ interface CommitItem {
   repository: { full_name: string };
 }
 
+interface RepoCommitItem {
+  sha: string;
+  commit: { message: string; author: { date: string } };
+  html_url: string;
+  author: { login: string } | null;
+}
+
 interface IssueItem {
   number: number;
   title: string;
@@ -99,6 +106,68 @@ interface IssueItem {
   repository_url: string;
   created_at: string;
   pull_request?: { merged_at?: string };
+}
+
+async function ghPaginateRest(endpoint: string): Promise<unknown[]> {
+  const allItems: unknown[] = [];
+  let page = 1;
+  while (true) {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    const url = `${endpoint}${separator}per_page=100&page=${page}`;
+    try {
+      const { stdout } = await execFileAsync("gh", ["api", url], {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      const result = JSON.parse(stdout);
+      if (!Array.isArray(result) || result.length === 0) break;
+      allItems.push(...result);
+      if (result.length < 100) break;
+      page++;
+    } catch {
+      break;
+    }
+  }
+  return allItems;
+}
+
+// The Search API has an indexing delay — recent commits may not appear for hours.
+// Supplement with repo-level API for today's commits from recently pushed repos.
+async function fetchTodayCommitsFromRepos(): Promise<CommitItem[]> {
+  const today = new Date().toLocaleDateString("en-CA");
+  const sinceISO = new Date(today + "T00:00:00").toISOString();
+
+  // Get repos pushed today (fast — usually just a few)
+  let repos: Array<{ full_name: string }> = [];
+  try {
+    const { stdout } = await execFileAsync("gh", [
+      "api", `/user/repos?type=owner&sort=pushed&direction=desc&per_page=20`,
+    ], { timeout: 15000, maxBuffer: 5 * 1024 * 1024 });
+    const allRepos = JSON.parse(stdout) as Array<{ full_name: string; pushed_at: string }>;
+    repos = allRepos.filter((r) => r.pushed_at >= sinceISO);
+  } catch {
+    return [];
+  }
+
+  const results: CommitItem[] = [];
+  await Promise.all(
+    repos.map(async (repo) => {
+      const items = (await ghPaginateRest(
+        `/repos/${repo.full_name}/commits?author=${USERNAME}&since=${sinceISO}`
+      )) as RepoCommitItem[];
+      for (const c of items) {
+        if (c.author?.login === USERNAME) {
+          results.push({
+            sha: c.sha,
+            commit: { message: c.commit.message, author: { date: c.commit.author.date } },
+            html_url: c.html_url,
+            repository: { full_name: repo.full_name },
+          });
+        }
+      }
+    })
+  );
+  return results;
 }
 
 async function fetchCommits90Days(): Promise<CommitItem[]> {
@@ -117,6 +186,16 @@ async function fetchCommits90Days(): Promise<CommitItem[]> {
     const items = await fetchAllPages(`/search/commits?q=${q}`);
     allCommits.push(...(items as CommitItem[]));
   }
+
+  // Supplement with repo-level API for today (bypasses search indexing delay)
+  const todayCommits = await fetchTodayCommitsFromRepos();
+  const existingShas = new Set(allCommits.map((c) => c.sha));
+  for (const c of todayCommits) {
+    if (!existingShas.has(c.sha)) {
+      allCommits.push(c);
+    }
+  }
+
   return allCommits;
 }
 

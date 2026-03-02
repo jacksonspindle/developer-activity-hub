@@ -21,6 +21,7 @@ import { SCORE_WEIGHTS, SCORE_THRESHOLDS } from "@/lib/productivity-score";
 
 interface ProductivityScoreCardProps {
   summary: ScoreSummary;
+  onDayClick?: (date: string) => void;
 }
 
 type AvgMode = "7d" | "30d";
@@ -47,6 +48,19 @@ const FACTOR_LABELS: Record<string, string> = {
   toolCalls: "Tool Calls",
 };
 
+function formatRawValue(key: string, value: number): string {
+  if (key === "tokens") {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+  }
+  return String(value);
+}
+
+function formatThreshold(key: string, value: number): string {
+  if (key === "tokens") return `${(value / 1_000).toFixed(0)}k`;
+  return String(value);
+}
+
 function CustomTooltip({
   active,
   payload,
@@ -72,9 +86,9 @@ function CustomTooltip({
       <div className="space-y-1">
         {(Object.keys(daily.breakdown) as Array<keyof typeof daily.breakdown>).map(
           (key) => {
-            const value = daily.breakdown[key];
-            const max = SCORE_WEIGHTS[key];
-            const pct = max > 0 ? (value / max) * 100 : 0;
+            const raw = daily.rawValues[key];
+            const threshold = SCORE_THRESHOLDS[key];
+            const pct = Math.min(raw / threshold, 1) * 100;
             return (
               <div key={key} className="flex items-center gap-2 text-[11px]">
                 <span className="text-gray-500 w-[72px] shrink-0">
@@ -86,8 +100,8 @@ function CustomTooltip({
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-gray-400 w-[36px] text-right tabular-nums">
-                  {Math.round(value)}/{max}
+                <span className="text-gray-400 w-[46px] text-right tabular-nums">
+                  {formatRawValue(key, raw)}/{formatThreshold(key, threshold)}
                 </span>
               </div>
             );
@@ -98,7 +112,7 @@ function CustomTooltip({
   );
 }
 
-export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
+export function ProductivityScoreCard({ summary, onDayClick }: ProductivityScoreCardProps) {
   const [avgMode, setAvgMode] = useState<AvgMode>("7d");
 
   const chartData = summary.daily.map((d) => ({
@@ -267,7 +281,15 @@ export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
               }}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="score" radius={[2, 2, 0, 0]} barSize={10} opacity={0.7}>
+            <Bar
+              dataKey="score"
+              radius={[2, 2, 0, 0]}
+              barSize={10}
+              opacity={0.7}
+              cursor={onDayClick ? "pointer" : "default"}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              onClick={onDayClick ? (data: any) => { if (data?.date) onDayClick(data.date); } : undefined}
+            >
               {chartData.map((entry, idx) => (
                 <Cell key={idx} fill={scoreColor(entry.score)} fillOpacity={0.5} />
               ))}
@@ -283,6 +305,9 @@ export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
                 fill: "#a855f6",
                 stroke: "#c084fc",
                 strokeWidth: 2,
+                cursor: onDayClick ? "pointer" : "default",
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                onClick: onDayClick ? (_event: any, payload: any) => { if (payload?.payload?.date) onDayClick(payload.payload.date); } : undefined,
               }}
             />
           </ComposedChart>
