@@ -2,19 +2,22 @@
 
 import { useState } from "react";
 import {
-  AreaChart,
-  Area,
+  ComposedChart,
+  Bar,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
   ReferenceLine,
+  Cell,
 } from "recharts";
 import { BentoCard } from "@/components/bento-card";
+import { InfoTooltip } from "@/components/info-tooltip";
 import { formatDate, formatFullDate, cn } from "@/lib/utils";
 import type { ScoreSummary, DailyScore } from "@/lib/productivity-score";
-import { SCORE_WEIGHTS } from "@/lib/productivity-score";
+import { SCORE_WEIGHTS, SCORE_THRESHOLDS } from "@/lib/productivity-score";
 
 interface ProductivityScoreCardProps {
   summary: ScoreSummary;
@@ -111,7 +114,42 @@ export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
       {/* Header */}
       <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Productivity Score</h3>
+          <h3 className="text-lg font-semibold">
+            Productivity Score
+            <InfoTooltip wide>
+              <div className="space-y-2.5">
+                <p className="text-gray-300 font-medium text-[11px]">
+                  Daily score (0–100) based on your dev activity, calculated as:
+                </p>
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-gray-500">
+                      <th className="text-left font-medium pb-1">Factor</th>
+                      <th className="text-right font-medium pb-1">Weight</th>
+                      <th className="text-right font-medium pb-1">100% at</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-400">
+                    {(Object.keys(SCORE_WEIGHTS) as Array<keyof typeof SCORE_WEIGHTS>).map((key) => (
+                      <tr key={key} className="border-t border-white/[0.04]">
+                        <td className="py-0.5">{FACTOR_LABELS[key]}</td>
+                        <td className="text-right tabular-nums">{SCORE_WEIGHTS[key]}pts</td>
+                        <td className="text-right tabular-nums">
+                          {key === "tokens"
+                            ? `${(SCORE_THRESHOLDS[key] / 1000).toFixed(0)}k`
+                            : SCORE_THRESHOLDS[key]}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="border-t border-white/[0.06] pt-1.5 space-y-1 text-[10px] text-gray-500">
+                  <p>Each factor scales linearly from 0 → threshold, capped at its max weight.</p>
+                  <p>A streak bonus of up to +10% is applied based on consecutive active days (maxes at 14 days).</p>
+                </div>
+              </div>
+            </InfoTooltip>
+          </h3>
           <p className="text-xs text-gray-500">Composite daily score (0–100)</p>
         </div>
 
@@ -171,16 +209,38 @@ export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
         </div>
       </div>
 
-      {/* Area chart */}
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-[11px] text-gray-400">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "#4ade80", opacity: 0.5 }} />
+          <span>Great day (70–100)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "#fbbf24", opacity: 0.5 }} />
+          <span>Okay day (40–69)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "#f87171", opacity: 0.5 }} />
+          <span>Light day (0–39)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: "#a855f6" }} />
+          <span>
+            {avgMode === "7d" ? "7" : "30"}-day rolling avg
+            <InfoTooltip>
+              The average of your daily scores over the
+              {avgMode === "7d" ? " last 7" : " last 30"} days.
+              It smooths out day-to-day swings so you can
+              see your overall trend.
+            </InfoTooltip>
+          </span>
+        </div>
+      </div>
+
+      {/* Chart: daily score bars + rolling avg trend line */}
       <div className="h-[200px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-            <defs>
-              <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#a855f6" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#a855f6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
+          <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
             <XAxis
               dataKey="date"
@@ -207,12 +267,16 @@ export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
               }}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Area
+            <Bar dataKey="score" radius={[2, 2, 0, 0]} barSize={10} opacity={0.7}>
+              {chartData.map((entry, idx) => (
+                <Cell key={idx} fill={scoreColor(entry.score)} fillOpacity={0.5} />
+              ))}
+            </Bar>
+            <Line
               type="monotone"
               dataKey="displayAvg"
               stroke="#a855f6"
               strokeWidth={2}
-              fill="url(#scoreGradient)"
               dot={false}
               activeDot={{
                 r: 5,
@@ -221,7 +285,7 @@ export function ProductivityScoreCard({ summary }: ProductivityScoreCardProps) {
                 strokeWidth: 2,
               }}
             />
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </BentoCard>

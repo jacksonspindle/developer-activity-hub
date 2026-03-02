@@ -20,7 +20,6 @@ import { SortableCard } from "@/components/sortable-card";
 interface DashboardGridProps {
   cardOrder: string[];
   cardSpans: Record<string, number>;
-  isEditMode: boolean;
   onReorder: (newOrder: string[]) => void;
   onSpanChange: (cardId: string, span: number) => void;
   renderCard: (cardId: string) => React.ReactNode;
@@ -29,7 +28,6 @@ interface DashboardGridProps {
 export function DashboardGrid({
   cardOrder,
   cardSpans,
-  isEditMode,
   onReorder,
   onSpanChange,
   renderCard,
@@ -150,7 +148,6 @@ export function DashboardGrid({
               id={cardId}
               span={cardSpans[cardId] ?? 1}
               index={index}
-              isEditMode={isEditMode}
               onSpanChange={onSpanChange}
             >
               {renderCard(cardId)}

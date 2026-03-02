@@ -3,6 +3,7 @@ import path from "path";
 import os from "os";
 import type { StatsCache, DailyUsage, UsageData } from "./types";
 import { utcToLocalDate } from "./utils";
+import { loadArchive } from "./archive";
 
 interface JsonlEntry {
   type?: string;
@@ -170,14 +171,30 @@ export async function loadUsageData(): Promise<UsageData> {
     // JSONL supplementation is best-effort
   }
 
+  // Supplement sessions/messages/toolCalls from archive for dates after stats-cache
+  try {
+    const archive = await loadArchive();
+    for (const session of archive.sessions) {
+      if (session.date <= statsCache.lastComputedDate) continue;
+      const existing = dailyMap.get(session.date);
+      if (existing) {
+        existing.sessions++;
+        existing.messages += session.messageCount;
+        existing.toolCalls += session.toolCallCount;
+      }
+    }
+  } catch {
+    // archive supplementation is best-effort
+  }
+
   // Sort by date
   const daily = Array.from(dailyMap.values()).sort(
     (a, b) => a.date.localeCompare(b.date)
   );
 
   const totalTokens = daily.reduce((sum, d) => sum + d.tokens, 0);
-  const totalMessages = statsCache.totalMessages;
-  const totalSessions = statsCache.totalSessions;
+  const totalMessages = daily.reduce((sum, d) => sum + d.messages, 0);
+  const totalSessions = daily.reduce((sum, d) => sum + d.sessions, 0);
   const totalToolCalls = daily.reduce((sum, d) => sum + d.toolCalls, 0);
   const daysActive = daily.length;
 

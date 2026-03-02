@@ -14,7 +14,7 @@ const execFileAsync = promisify(execFile);
 const CACHE_PATH = path.join(process.cwd(), "data", "github-cache.json");
 const USERNAME = "jacksonspindle";
 const CACHE_VERSION = 1;
-const TODAY_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const TODAY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 async function loadCache(): Promise<GitHubCache> {
   try {

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout";
-import { HeroTokensCard, HeroCommitsCard } from "@/components/hero-stats";
+import { HeroStatsCard } from "@/components/hero-stats";
 import { StatCard } from "@/components/stat-card";
 import { CombinedTimeline } from "@/components/combined-timeline";
 import { UnifiedYearHeatmap } from "@/components/unified-year-heatmap";
@@ -26,9 +26,7 @@ import {
   GitFork,
   GitPullRequest,
   Flame,
-  Settings2,
-  RotateCcw,
-  Check,
+  RefreshCw,
 } from "lucide-react";
 
 function LoadingSkeleton() {
@@ -49,19 +47,24 @@ function LoadingSkeleton() {
 }
 
 export default function Home() {
-  const { data: usageData, loading: usageLoading, error: usageError } = useUsageData();
-  const { data: githubData, loading: githubLoading } = useGitHubStats();
+  const { data: usageData, loading: usageLoading, error: usageError, refresh: refreshUsage } = useUsageData();
+  const { data: githubData, loading: githubLoading, refresh: refreshGitHub } = useGitHubStats();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const {
     cardOrder,
     cardSpans,
-    isEditMode,
-    toggleEditMode,
     reorderCards,
     setCardSpan,
-    resetLayout,
   } = useDashboardLayout();
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    refreshUsage();
+    refreshGitHub();
+    setTimeout(() => setRefreshing(false), 1500);
+  }, [refreshUsage, refreshGitHub]);
 
   const combinedDaily = useMemo<CombinedDailyData[]>(() => {
     const map = new Map<string, CombinedDailyData>();
@@ -157,10 +160,13 @@ export default function Home() {
   const renderCard = useCallback(
     (cardId: string): React.ReactNode => {
       switch (cardId) {
-        case "hero-tokens":
-          return <HeroTokensCard totalTokens={usageData?.totalTokens ?? 0} />;
-        case "hero-commits":
-          return <HeroCommitsCard totalCommits={githubData?.totals.commits ?? 0} />;
+        case "hero-stats":
+          return (
+            <HeroStatsCard
+              totalTokens={usageData?.totalTokens ?? 0}
+              totalCommits={githubData?.totals.commits ?? 0}
+            />
+          );
         case "stat-sessions":
           return (
             <StatCard
@@ -325,47 +331,17 @@ export default function Home() {
             Claude Code + GitHub — all in one place
           </p>
 
-          {/* Edit mode controls */}
+          {/* Refresh control */}
           {usageData && (
             <div className="mt-4 flex items-center justify-center gap-2">
-              <AnimatePresence mode="wait">
-                {isEditMode ? (
-                  <motion.div
-                    key="edit-controls"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex items-center gap-2"
-                  >
-                    <button
-                      onClick={resetLayout}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Reset
-                    </button>
-                    <button
-                      onClick={toggleEditMode}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs text-green-400 hover:bg-green-500/20 transition-all"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Done
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.button
-                    key="customize-btn"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    onClick={toggleEditMode}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
-                  >
-                    <Settings2 className="h-3.5 w-3.5" />
-                    Customize
-                  </motion.button>
-                )}
-              </AnimatePresence>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
             </div>
           )}
         </motion.div>
@@ -382,7 +358,6 @@ export default function Home() {
           <DashboardGrid
             cardOrder={cardOrder}
             cardSpans={cardSpans}
-            isEditMode={isEditMode}
             onReorder={reorderCards}
             onSpanChange={setCardSpan}
             renderCard={renderCard}

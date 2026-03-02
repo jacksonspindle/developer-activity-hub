@@ -15,7 +15,7 @@ import { loadUsageData } from "./parse-stats";
 const execFileAsync = promisify(execFile);
 const CACHE_PATH = path.join(process.cwd(), "data", "github-bulk-stats.json");
 const USERNAME = "jacksonspindle";
-const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export const LANGUAGE_COLORS: Record<string, string> = {
   TypeScript: "#3178c6",
@@ -268,9 +268,11 @@ async function saveCache(stats: GitHubBulkStats): Promise<void> {
   await fs.writeFile(CACHE_PATH, JSON.stringify(stats, null, 2));
 }
 
-export async function loadGitHubBulkStats(): Promise<GitHubBulkStats> {
-  const cached = await loadCache();
-  if (cached) return cached;
+export async function loadGitHubBulkStats(force = false): Promise<GitHubBulkStats> {
+  if (!force) {
+    const cached = await loadCache();
+    if (cached) return cached;
+  }
 
   // Fetch all data in parallel
   const [commits, prsOpened, prsReviewed, issuesCreated] = await Promise.all([

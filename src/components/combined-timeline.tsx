@@ -196,7 +196,7 @@ export function CombinedTimeline({ data, onDayClick }: CombinedTimelineProps) {
         </div>
       </div>
 
-      <div className="h-[350px] w-full">
+      <div className="min-h-[350px] flex-1 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={filteredData}

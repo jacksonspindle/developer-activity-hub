@@ -42,7 +42,7 @@ export function BentoCard({
   return (
     <div
       className={cn(
-        "group relative rounded-2xl border bg-[#111827]/60 backdrop-blur-3xl transition-all duration-300 hover:bg-[#111827]/80 hover:border-white/[0.1]",
+        "group relative h-full rounded-2xl border bg-[#111827]/60 backdrop-blur-3xl transition-all duration-300 hover:bg-[#111827]/80 hover:border-white/[0.1]",
         variantBorder[variant],
         variantShadow[variant],
         className
@@ -55,7 +55,7 @@ export function BentoCard({
       {variant !== "default" && (
         <div className={cn("pointer-events-none absolute inset-0 rounded-2xl", variantOverlay[variant])} />
       )}
-      <div className="relative p-5">{children}</div>
+      <div className="relative h-full flex flex-col p-5">{children}</div>
     </div>
   );
 }

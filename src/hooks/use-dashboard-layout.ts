@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CARD_CONFIGS,
   DEFAULT_CARD_ORDER,
@@ -65,8 +65,6 @@ function loadLayout(): DashboardLayout {
 
 export function useDashboardLayout() {
   const [layout, setLayout] = useState<DashboardLayout>(loadLayout);
-  const [isEditMode, setIsEditMode] = useState(false);
-
   // Persist to localStorage whenever layout changes
   useEffect(() => {
     try {
@@ -97,15 +95,9 @@ export function useDashboardLayout() {
     });
   }, []);
 
-  const toggleEditMode = useCallback(() => {
-    setIsEditMode((prev) => !prev);
-  }, []);
-
   return {
     cardOrder: layout.cardOrder,
     cardSpans: layout.cardSpans,
-    isEditMode,
-    toggleEditMode,
     reorderCards,
     setCardSpan,
     resetLayout,

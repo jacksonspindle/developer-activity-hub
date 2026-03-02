@@ -11,7 +11,6 @@ interface SortableCardProps {
   id: string;
   span: number;
   index: number;
-  isEditMode: boolean;
   onSpanChange: (cardId: string, span: number) => void;
   children: React.ReactNode;
 }
@@ -20,7 +19,6 @@ export function SortableCard({
   id,
   span,
   index,
-  isEditMode,
   onSpanChange,
   children,
 }: SortableCardProps) {
@@ -31,7 +29,7 @@ export function SortableCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled: !isEditMode });
+  } = useSortable({ id });
 
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const maxCols = isDesktop ? 4 : 2;
@@ -126,12 +124,13 @@ export function SortableCard({
         isDragging &&
           "shadow-2xl shadow-black/50 ring-1 ring-green-500/20 rounded-2xl"
       )}
-      {...(isEditMode ? { ...attributes, ...listeners } : {})}
+      {...attributes}
+      {...listeners}
     >
       {children}
 
       {/* Corner resize handle */}
-      {isEditMode && config && (
+      {config && (
         <div
           onPointerDown={handleResizePointerDown}
           onPointerMove={handleResizePointerMove}
