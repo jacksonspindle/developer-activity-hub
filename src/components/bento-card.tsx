@@ -42,7 +42,7 @@ export function BentoCard({
   return (
     <div
       className={cn(
-        "group relative h-full rounded-2xl border bg-[#111827]/60 backdrop-blur-3xl transition-all duration-300 hover:bg-[#111827]/80 hover:border-white/[0.1]",
+        "group relative h-full rounded-2xl border bg-card backdrop-blur-3xl transition-all duration-300 hover:brightness-125 hover:border-white/[0.1]",
         variantBorder[variant],
         variantShadow[variant],
         className

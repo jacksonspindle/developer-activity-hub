@@ -1,18 +1,18 @@
 // Productivity Score — pure computation, no React
 
 export const SCORE_WEIGHTS = {
-  commits: 40,
+  commits: 30,
   prsMerged: 5,
   prsOpened: 5,
   issuesCreated: 5,
-  tokens: 20,
-  sessions: 15,
+  tokens: 25,
+  sessions: 20,
   toolCalls: 10,
 } as const;
 
 // Minimum floors — adaptive thresholds can never drop below these
 export const MIN_THRESHOLDS = {
-  commits: 2,
+  commits: 30,
   prsMerged: 1,
   prsOpened: 1,
   issuesCreated: 1,
@@ -23,7 +23,7 @@ export const MIN_THRESHOLDS = {
 
 // Fallback thresholds used when there isn't enough history
 export const DEFAULT_THRESHOLDS = {
-  commits: 5,
+  commits: 30,
   prsMerged: 1,
   prsOpened: 2,
   issuesCreated: 2,
@@ -137,7 +137,7 @@ function computeBaseScore(
 
   const breakdown = {} as ScoreBreakdown;
   for (const m of metrics) {
-    breakdown[m] = Math.min(input[m] / thresholds[m], 1.5) * SCORE_WEIGHTS[m];
+    breakdown[m] = Math.min(input[m] / thresholds[m], 2) * SCORE_WEIGHTS[m];
   }
 
   const score = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
@@ -163,7 +163,7 @@ export function computeScoreSummary(
 
   for (const input of inputs) {
     const { score: base, breakdown, rawValues } = computeBaseScore(input, thresholds);
-    const final = Math.min(Math.round(base * (1 + streakBonus) * 10) / 10, 100);
+    const final = Math.round(base * (1 + streakBonus) * 10) / 10;
     rawScores.push(final);
 
     const idx = rawScores.length - 1;

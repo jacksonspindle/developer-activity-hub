@@ -124,7 +124,7 @@ function WeeklyContent() {
   const isCurrentWeek = currentWeek === getCurrentWeekString();
 
   return (
-    <div className="min-h-screen bg-[#060a12]">
+    <div className="min-h-screen bg-background">
       {/* Background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(168,85,247,0.04)_0%,transparent_60%)]" />
@@ -216,7 +216,7 @@ function WeeklyContent() {
                 {data.deltas.map((delta) => (
                   <div
                     key={delta.label}
-                    className="rounded-xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-3 text-center"
+                    className="rounded-xl border border-white/[0.06] bg-card backdrop-blur-3xl p-3 text-center"
                   >
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
                       {delta.label}
@@ -499,7 +499,7 @@ function WeeklyContent() {
 
             {/* Empty week message */}
             {data.activeDates.length === 0 && !data.aiSummary && (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-8 text-center">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-8 text-center">
                 <p className="text-gray-500">No activity recorded for this week</p>
               </div>
             )}
@@ -514,7 +514,7 @@ export default function WeeklyPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#060a12] flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
         </div>
       }

@@ -331,17 +331,28 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
       return;
     }
 
+    let cancelled = false;
     setLoading(true);
     setError(null);
 
-    fetch(`/api/day-detail?date=${date}`)
-      .then((res) => res.json())
-      .then((json) => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/day-detail?date=${date}`, { cache: "no-store" });
+        const text = await res.text();
+        if (cancelled) return;
+        const json = JSON.parse(text);
         if (json.error) throw new Error(json.error);
         setData(json);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [date]);
 
   return (
@@ -412,16 +423,18 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
             </div>
 
             {/* AI-generated day summary */}
-            {data.daySummary && (
-              <GlassCard>
+            {data.daySummary ? (
+              <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <div className="p-1 rounded-md bg-purple-500/10 border border-purple-500/20">
-                    <Sparkles className="h-3 w-3 text-purple-400" />
-                  </div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Day Summary</p>
+                  <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                  <p className="text-[10px] text-purple-300 uppercase tracking-wider font-medium">Day Summary</p>
                 </div>
-                <p className="text-xs text-gray-300 leading-relaxed">{data.daySummary}</p>
-              </GlassCard>
+                <p className="text-sm text-gray-200 leading-relaxed">{data.daySummary}</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
+                <p className="text-xs text-yellow-300">No AI summary available for this day.</p>
+              </div>
             )}
 
             {/* GitHub activity */}

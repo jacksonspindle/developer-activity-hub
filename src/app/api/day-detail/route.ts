@@ -54,7 +54,9 @@ export async function GET(request: NextRequest) {
       github: github ?? undefined,
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to load day detail" },

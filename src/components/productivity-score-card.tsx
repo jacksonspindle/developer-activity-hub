@@ -122,6 +122,9 @@ export function ProductivityScoreCard({ summary, onDayClick }: ProductivityScore
     displayAvg: avgMode === "7d" ? d.avg7d : d.avg30d,
   }));
 
+  const maxScore = Math.max(100, ...chartData.map((d) => d.score));
+  const yMax = Math.ceil(maxScore / 10) * 10;
+
   const currentAvg = avgMode === "7d" ? summary.avg7d : summary.avg30d;
   const delta = summary.deltaVsPrevWeek;
 
@@ -264,7 +267,7 @@ export function ProductivityScoreCard({ summary, onDayClick }: ProductivityScore
               axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
             />
             <YAxis
-              domain={[0, 100]}
+              domain={[0, yMax]}
               stroke="rgba(255,255,255,0.15)"
               tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
               axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
