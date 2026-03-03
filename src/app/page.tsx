@@ -11,7 +11,6 @@ import { CombinedTimeline } from "@/components/combined-timeline";
 import { UnifiedYearHeatmap } from "@/components/unified-year-heatmap";
 import { StreakAchievements } from "@/components/streak-achievements";
 import { RepoBreakdown } from "@/components/repo-breakdown";
-import { RecentProjects } from "@/components/recent-projects";
 import { PRIssueStats } from "@/components/pr-issue-stats";
 import { ModelBreakdown } from "@/components/model-breakdown";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
@@ -262,20 +261,7 @@ export default function Home() {
             );
           }
           return <RepoBreakdown repos={githubData.repos} />;
-        case "recent-projects":
-          if (!githubData) {
-            return githubLoading ? (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
-                <Skeleton className="h-[250px] rounded-xl" />
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
-                <p className="text-sm text-muted-foreground">No project data</p>
-              </div>
-            );
-          }
-          return <RecentProjects repos={githubData.repos} />;
-        case "pr-issues":
+case "pr-issues":
           if (!githubData) {
             return githubLoading ? (
               <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
