@@ -7,7 +7,7 @@ import {
   DEFAULT_CARD_SPANS,
 } from "@/lib/dashboard-cards";
 
-const STORAGE_KEY = "dashboard-layout-v1";
+const STORAGE_KEY = "dashboard-layout-v2";
 
 interface DashboardLayout {
   cardOrder: string[];

@@ -5,7 +5,6 @@ import { loadUsageData } from "@/lib/parse-stats";
 import { loadArchive } from "@/lib/archive";
 import { loadGitHubBulkStats } from "@/lib/github-bulk";
 import { computeScoreSummary, type DailyScoreInput } from "@/lib/productivity-score";
-import { SCORE_WEIGHTS } from "@/lib/productivity-score";
 import { getModelDisplayName, getModelColor } from "@/lib/utils";
 import { generateWeeklySummary } from "@/lib/ai-summary";
 import { getWeekDates, buildWeekIdentifier, offsetWeek } from "@/lib/week-utils";
@@ -113,16 +112,26 @@ export async function GET(request: NextRequest) {
     const streakDays = githubData?.streaks.currentCombined.days ?? 0;
     const allScores = computeScoreSummary(allInputs, streakDays);
 
-    // Filter to week
-    const weekScores: WeeklyScoreDay[] = allScores.daily
-      .filter((d) => weekSet.has(d.date))
-      .map((d) => ({
-        date: d.date,
-        score: d.score,
-        avg7d: d.avg7d,
-        breakdown: d.breakdown,
-        rawValues: d.rawValues,
-      }));
+    // Build a lookup of scores that exist for this week
+    const scoreLookup = new Map(
+      allScores.daily.filter((d) => weekSet.has(d.date)).map((d) => [d.date, d])
+    );
+    const emptyBreakdown = { commits: 0, prsMerged: 0, prsOpened: 0, issuesCreated: 0, tokens: 0, sessions: 0, toolCalls: 0 };
+
+    // Ensure all 7 days are present (Mon–Sun), filling in zeros for missing days
+    const weekScores: WeeklyScoreDay[] = weekDates.map((date) => {
+      const existing = scoreLookup.get(date);
+      if (existing) {
+        return {
+          date: existing.date,
+          score: existing.score,
+          avg7d: existing.avg7d,
+          breakdown: existing.breakdown,
+          rawValues: existing.rawValues,
+        };
+      }
+      return { date, score: 0, avg7d: 0, breakdown: emptyBreakdown, rawValues: emptyBreakdown };
+    });
 
     // --- 2. Top 3 days ---
     const factorLabels: Record<string, string> = {
