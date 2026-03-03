@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
@@ -27,6 +27,7 @@ import {
   Flame,
   RefreshCw,
   CalendarDays,
+  Minimize2,
 } from "lucide-react";
 import { getCurrentWeekString } from "@/lib/week-utils";
 
@@ -52,6 +53,11 @@ export default function Home() {
   const { data: githubData, loading: githubLoading, refresh: refreshGitHub } = useGitHubStats();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isTauri, setIsTauri] = useState(false);
+
+  useEffect(() => {
+    setIsTauri(typeof window !== "undefined" && !!(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__);
+  }, []);
 
   const {
     cardOrder,
@@ -228,14 +234,14 @@ export default function Home() {
         case "streaks":
           if (!githubData) {
             return githubLoading ? (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
                 <div className="space-y-3">
                   <Skeleton className="h-16 rounded-xl" />
                   <Skeleton className="h-32 rounded-xl" />
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
                 <p className="text-sm text-muted-foreground text-center py-8">
                   GitHub data unavailable
                 </p>
@@ -251,11 +257,11 @@ export default function Home() {
         case "repos":
           if (!githubData) {
             return githubLoading ? (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
                 <Skeleton className="h-[250px] rounded-xl" />
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
                 <p className="text-sm text-muted-foreground">No repository data</p>
               </div>
             );
@@ -264,11 +270,11 @@ export default function Home() {
 case "pr-issues":
           if (!githubData) {
             return githubLoading ? (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-5 shadow-xl shadow-black/30">
                 <Skeleton className="h-[250px] rounded-xl" />
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#111827]/60 backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-3xl p-5 shadow-xl shadow-black/30 text-center py-8">
                 <p className="text-sm text-muted-foreground">No PR/issue data</p>
               </div>
             );
@@ -294,7 +300,7 @@ case "pr-issues":
   );
 
   return (
-    <div className="min-h-screen bg-[#060a12]">
+    <div className="min-h-screen bg-background">
       {/* Multi-layer background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(74,222,128,0.04)_0%,transparent_60%)]" />
@@ -337,6 +343,17 @@ case "pr-issues":
                 <CalendarDays className="h-3.5 w-3.5" />
                 Weekly Digest
               </a>
+              {isTauri && (
+                <button
+                  onClick={() => {
+                    (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string) => void } }).__TAURI_INTERNALS__.invoke("enter_mini_mode");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
+                >
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  Mini
+                </button>
+              )}
             </div>
           )}
         </motion.div>
