@@ -1,12 +1,12 @@
 // Productivity Score — pure computation, no React
 
 export const SCORE_WEIGHTS = {
-  commits: 30,
+  commits: 40,
   prsMerged: 5,
   prsOpened: 5,
   issuesCreated: 5,
-  tokens: 25,
-  sessions: 20,
+  tokens: 20,
+  sessions: 15,
   toolCalls: 10,
 } as const;
 
@@ -137,7 +137,7 @@ function computeBaseScore(
 
   const breakdown = {} as ScoreBreakdown;
   for (const m of metrics) {
-    breakdown[m] = Math.min(input[m] / thresholds[m], 1) * SCORE_WEIGHTS[m];
+    breakdown[m] = Math.min(input[m] / thresholds[m], 1.5) * SCORE_WEIGHTS[m];
   }
 
   const score = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
