@@ -1,8 +1,8 @@
 import type { WeekIdentifier } from "./weekly-types";
 
-/** ISO 8601 week number (Thursday-based algorithm) */
+/** ISO 8601 week number (Thursday-based algorithm). Uses UTC components. */
 export function getISOWeek(date: Date): { isoYear: number; isoWeek: number } {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   // Set to nearest Thursday: current date + 4 - current day number (Mon=1, Sun=7)
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -11,7 +11,7 @@ export function getISOWeek(date: Date): { isoYear: number; isoWeek: number } {
   return { isoYear: d.getUTCFullYear(), isoWeek: weekNo };
 }
 
-/** Convert a date to ISO week string, e.g. "2026-W09" */
+/** Convert a date to ISO week string, e.g. "2026-W09". Uses UTC components. */
 export function toISOWeekString(date: Date): string {
   const { isoYear, isoWeek } = getISOWeek(date);
   return `${isoYear}-W${String(isoWeek).padStart(2, "0")}`;
@@ -68,9 +68,12 @@ export function buildWeekIdentifier(weekStr: string): WeekIdentifier {
   return { week: weekStr, start, end, label };
 }
 
-/** Get the current ISO week string */
+/** Get the current ISO week string (based on local date) */
 export function getCurrentWeekString(): string {
-  return toISOWeekString(new Date());
+  const now = new Date();
+  // Create a UTC date that represents today's local date, so getISOWeek (UTC-based) reads it correctly
+  const localAsUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  return toISOWeekString(localAsUTC);
 }
 
 /** Shift a week string by `delta` weeks (+1 = next, -1 = previous) */
