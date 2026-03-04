@@ -133,18 +133,17 @@ export default function MiniPlayer() {
         <div className="h-1 w-8 rounded-full bg-white/10" />
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-2 px-3 pt-1.5">
+      {/* Stats row */}
+      <div className="flex items-center justify-between px-3 pt-1.5">
         {stats.map((s) => (
-          <div
-            key={s.label}
-            className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] py-2.5"
-          >
-            <s.icon className={`h-3.5 w-3.5 mb-0.5 ${s.color}`} />
-            <span className="text-base font-bold tracking-tight text-white leading-none flex items-center justify-center">
-              {!dayDetail && s.label !== "Streak" ? <Loader2 className="h-4 w-4 animate-spin text-gray-500" /> : s.value}
-            </span>
-            <span className="text-[10px] text-gray-500 mt-0.5">{s.label}</span>
+          <div key={s.label} className="flex flex-col items-center flex-1">
+            <div className="flex items-center gap-1">
+              <s.icon className={`h-3 w-3 ${s.color}`} />
+              <span className="text-sm font-bold tracking-tight text-white leading-none">
+                {!dayDetail && s.label !== "Streak" ? <Loader2 className="h-3 w-3 animate-spin text-gray-500" /> : s.value}
+              </span>
+            </div>
+            <span className="text-[9px] text-gray-500 mt-0.5">{s.label}</span>
           </div>
         ))}
       </div>
@@ -216,7 +215,7 @@ export default function MiniPlayer() {
       </div>
 
       {/* Expand button */}
-      <div className="flex justify-center pt-2 pb-1.5">
+      <div className="flex justify-center pt-1.5 pb-1">
         <button
           onClick={handleExpand}
           className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-1.5 text-[11px] text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
