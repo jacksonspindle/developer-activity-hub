@@ -221,8 +221,11 @@ pub fn run() {
                     }
                 });
 
-            // Use app icon for tray if available
-            if let Some(icon) = app.default_window_icon() {
+            // Use dedicated tray icon (template image for macOS menu bar)
+            let tray_icon_bytes = include_bytes!("../icons/tray-icon.png");
+            if let Ok(img) = tauri::image::Image::from_bytes(tray_icon_bytes) {
+                tray_builder = tray_builder.icon(img).icon_as_template(true);
+            } else if let Some(icon) = app.default_window_icon() {
                 tray_builder = tray_builder.icon(icon.clone()).icon_as_template(true);
             }
 
