@@ -4,8 +4,10 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
-import { Maximize2, Zap, GitCommitHorizontal, Flame, Loader2 } from "lucide-react";
+import { Maximize2, Zap, GitCommitHorizontal, Flame, Loader2, TrendingUp } from "lucide-react";
 import type { DayDetailResponse } from "@/lib/types";
+import { computeScoreSummary, type DailyScoreInput } from "@/lib/productivity-score";
+import type { CombinedDailyData } from "@/lib/github-types";
 
 function getLocalHour(timestamp: string | number): number {
   return new Date(typeof timestamp === "number" ? timestamp : timestamp).getHours();
@@ -60,6 +62,39 @@ export default function MiniPlayer() {
 
   const streak = githubData?.streaks.currentCombined.days ?? 0;
 
+  const todayScore = useMemo(() => {
+    if (!usageData || !githubData || !dayDetail) return null;
+    const combinedDaily: CombinedDailyData[] = [];
+    const map = new Map<string, CombinedDailyData>();
+    for (const d of usageData.daily) {
+      map.set(d.date, { date: d.date, tokens: d.tokens, commits: 0, prsOpened: 0, prsMerged: 0, issuesCreated: 0 });
+    }
+    for (const d of githubData.daily) {
+      const existing = map.get(d.date);
+      if (existing) {
+        existing.commits = d.commits;
+        existing.prsOpened = d.prsOpened;
+        existing.prsMerged = d.prsMerged;
+        existing.issuesCreated = d.issuesCreated;
+      } else {
+        map.set(d.date, { date: d.date, tokens: 0, commits: d.commits, prsOpened: d.prsOpened, prsMerged: d.prsMerged, issuesCreated: d.issuesCreated });
+      }
+    }
+    for (const v of map.values()) combinedDaily.push(v);
+    combinedDaily.sort((a, b) => a.date.localeCompare(b.date));
+
+    const usageLookup = new Map<string, { sessions: number; toolCalls: number }>();
+    for (const d of usageData.daily) {
+      usageLookup.set(d.date, { sessions: d.sessions, toolCalls: d.toolCalls });
+    }
+    const inputs: DailyScoreInput[] = combinedDaily.map((d) => {
+      const usage = usageLookup.get(d.date);
+      return { date: d.date, commits: d.commits, prsMerged: d.prsMerged, prsOpened: d.prsOpened, issuesCreated: d.issuesCreated, tokens: d.tokens, sessions: usage?.sessions ?? 0, toolCalls: usage?.toolCalls ?? 0 };
+    });
+    const summary = computeScoreSummary(inputs, streak);
+    return summary.current;
+  }, [usageData, githubData, dayDetail, streak]);
+
   // Derive hourly activity from today's tokens + commits
   const hourlyData = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, i) => ({
@@ -111,9 +146,10 @@ export default function MiniPlayer() {
   };
 
   const stats = [
-    { label: "Tokens", value: formatTokens(todayUsage.tokens), icon: Zap, color: "text-green-400" },
-    { label: "Commits", value: todayGitHub.commits, icon: GitCommitHorizontal, color: "text-purple-400" },
-    { label: "Streak", value: streak, icon: Flame, color: "text-amber-400" },
+    { label: "Score", value: todayScore ?? 0, icon: TrendingUp, color: "text-cyan-400", loading: todayScore === null },
+    { label: "Tokens", value: formatTokens(todayUsage.tokens), icon: Zap, color: "text-green-400", loading: !dayDetail },
+    { label: "Commits", value: todayGitHub.commits, icon: GitCommitHorizontal, color: "text-purple-400", loading: !dayDetail },
+    { label: "Streak", value: streak, icon: Flame, color: "text-amber-400", loading: false },
   ];
 
   return (
@@ -148,7 +184,7 @@ export default function MiniPlayer() {
             <div className="flex items-center gap-1">
               <s.icon className={`h-3 w-3 ${s.color}`} />
               <span className="text-sm font-bold tracking-tight text-white leading-none">
-                {!dayDetail && s.label !== "Streak" ? <Loader2 className="h-3 w-3 animate-spin text-gray-500" /> : s.value}
+                {s.loading ? <Loader2 className="h-3 w-3 animate-spin text-gray-500" /> : s.value}
               </span>
             </div>
             <span className="text-[9px] text-gray-500 mt-0.5">{s.label}</span>
