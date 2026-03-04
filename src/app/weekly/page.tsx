@@ -125,13 +125,16 @@ function WeeklyContent() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Draggable title bar region */}
+      <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-12 z-50" />
+
       {/* Background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(168,85,247,0.04)_0%,transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_50%,rgba(96,165,250,0.02)_0%,transparent_60%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-12">
+      <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-12">
         {/* Header */}
         <div className="mb-8">
           <a

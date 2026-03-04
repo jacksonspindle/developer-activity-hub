@@ -316,7 +316,10 @@ case "pr-issues":
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_50%,rgba(96,165,250,0.02)_0%,transparent_60%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-12">
+      {/* Draggable title bar region */}
+      <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-12 z-50" />
+
+      <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-12">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
