@@ -32,13 +32,14 @@ export async function GET(request: NextRequest) {
     // Get aggregate stats from the usage data for this day
     const dayUsage = usageData.daily.find((d) => d.date === date);
 
-    // AI summary: check cache first, generate if missing
-    let daySummary = await getCachedDaySummary(date);
+    // AI summary: for today, always regenerate; for past days, use cache
+    const todayStr = new Date().toLocaleDateString("en-CA");
+    const isToday = date === todayStr;
+    let daySummary = isToday ? null : await getCachedDaySummary(date);
     if (!daySummary && (sessions.length > 0 || github)) {
       const generated = await generateDaySummary(date, sessions, github ?? undefined);
       if (generated) {
         daySummary = generated;
-        // Cache in background — don't block response
         cacheDaySummary(date, generated).catch(() => {});
       }
     }
