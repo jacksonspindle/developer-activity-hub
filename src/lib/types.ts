@@ -100,6 +100,7 @@ export interface DayDetailResponse {
   hasSessionData: boolean;
   daySummary?: string;
   github?: GitHubDayActivity;
+  hourlyTokens?: Record<number, number>;
 }
 
 // GitHub integration types

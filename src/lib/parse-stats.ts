@@ -96,6 +96,50 @@ async function parseJsonlFile(filePath: string, afterDate: string): Promise<Map<
   return dailyData;
 }
 
+export async function getHourlyTokensForDate(date: string): Promise<Record<number, number>> {
+  const homeDir = os.homedir();
+  const projectsDir = path.join(homeDir, ".claude", "projects");
+  const hourlyTokens: Record<number, number> = {};
+
+  try {
+    // Scan all JSONL files modified recently
+    const cutoff = new Date(date + "T00:00:00").toISOString().split("T")[0];
+    const yesterday = new Date(new Date(date).getTime() - 86400000).toLocaleDateString("en-CA");
+    const jsonlFiles = await findJsonlFiles(projectsDir, yesterday);
+
+    for (const file of jsonlFiles) {
+      try {
+        const content = await fs.readFile(file, "utf-8");
+        const lines = content.split("\n").filter(Boolean);
+        const messageUsage = new Map<string, { hour: number; tokens: number }>();
+
+        for (const line of lines) {
+          try {
+            const entry: JsonlEntry = JSON.parse(line);
+            if (entry.type !== "assistant" || !entry.message?.usage || !entry.timestamp) continue;
+            const entryDate = utcToLocalDate(entry.timestamp);
+            if (entryDate !== date) continue;
+
+            const usage = entry.message.usage;
+            const tokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
+            if (tokens === 0) continue;
+
+            const msgId = entry.message.id || `anon-${Math.random()}`;
+            const hour = new Date(entry.timestamp).getHours();
+            messageUsage.set(msgId, { hour, tokens });
+          } catch { /* skip */ }
+        }
+
+        for (const { hour, tokens } of messageUsage.values()) {
+          hourlyTokens[hour] = (hourlyTokens[hour] || 0) + tokens;
+        }
+      } catch { /* skip */ }
+    }
+  } catch { /* best effort */ }
+
+  return hourlyTokens;
+}
+
 export async function loadUsageData(): Promise<UsageData> {
   const homeDir = os.homedir();
   const statsPath = path.join(homeDir, ".claude", "stats-cache.json");

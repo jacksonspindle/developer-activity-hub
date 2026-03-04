@@ -69,25 +69,13 @@ export default function MiniPlayer() {
       tokens: 0,
       commits: 0,
     }));
-    if (dayDetail?.sessions) {
-      for (const s of dayDetail.sessions) {
-        const h = getLocalHour(s.timestamp);
-        // Spread tokens across active hours based on session duration
-        if (s.durationMs > 0) {
-          const startH = h;
-          const endH = getLocalHour(s.timestamp + s.durationMs);
-          const spanHours = startH <= endH ? endH - startH + 1 : (24 - startH) + endH + 1;
-          const tokensPerHour = Math.round(s.totalTokens / spanHours);
-          for (let i = 0; i < spanHours; i++) {
-            const hr = (startH + i) % 24;
-            hours[hr].activity += i === 0 ? 1 : 0;
-            hours[hr].sessions += i === 0 ? 1 : 0;
-            hours[hr].tokens += tokensPerHour;
-          }
-        } else {
+    // Use hourly token data from raw JSONL parsing (includes active sessions)
+    if (dayDetail?.hourlyTokens) {
+      for (const [hourStr, tokens] of Object.entries(dayDetail.hourlyTokens)) {
+        const h = Number(hourStr);
+        if (h >= 0 && h < 24 && tokens > 0) {
+          hours[h].tokens += tokens;
           hours[h].activity += 1;
-          hours[h].sessions += 1;
-          hours[h].tokens += s.totalTokens;
         }
       }
     }

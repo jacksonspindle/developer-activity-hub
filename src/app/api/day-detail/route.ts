@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadArchive, getCachedDaySummary, cacheDaySummary } from "@/lib/archive";
-import { loadUsageData } from "@/lib/parse-stats";
+import { loadUsageData, getHourlyTokensForDate } from "@/lib/parse-stats";
 import { generateDaySummary } from "@/lib/ai-summary";
 import { getGitHubActivity } from "@/lib/github";
 import type { DayDetailResponse } from "@/lib/types";
@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch archive, usage data, and GitHub activity in parallel
-    const [archive, usageData, github] = await Promise.all([
+    const [archive, usageData, github, hourlyTokens] = await Promise.all([
       loadArchive(),
       loadUsageData(),
       getGitHubActivity(date).catch(() => null),
+      getHourlyTokensForDate(date).catch(() => ({})),
     ]);
 
     // Get archived sessions for this date
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
       hasSessionData: sessions.length > 0,
       daySummary: daySummary ?? undefined,
       github: github ?? undefined,
+      hourlyTokens,
     };
 
     return NextResponse.json(response, {
