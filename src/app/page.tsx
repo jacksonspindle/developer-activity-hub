@@ -54,9 +54,12 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isTauri, setIsTauri] = useState(false);
+  const [miniTransition, setMiniTransition] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setIsTauri(typeof window !== "undefined" && !!(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__);
+    requestAnimationFrame(() => setMounted(true));
   }, []);
 
   const {
@@ -300,7 +303,13 @@ case "pr-issues":
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background transition-all duration-200 ease-out"
+      style={{
+        opacity: mounted && !miniTransition ? 1 : 0,
+        transform: mounted && !miniTransition ? "scale(1)" : "scale(1.02)",
+      }}
+    >
       {/* Multi-layer background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(74,222,128,0.04)_0%,transparent_60%)]" />
@@ -346,7 +355,10 @@ case "pr-issues":
               {isTauri && (
                 <button
                   onClick={() => {
-                    (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string) => void } }).__TAURI_INTERNALS__.invoke("enter_mini_mode");
+                    setMiniTransition(true);
+                    setTimeout(() => {
+                      (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string) => void } }).__TAURI_INTERNALS__.invoke("enter_mini_mode");
+                    }, 200);
                   }}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
                 >

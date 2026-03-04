@@ -28,61 +28,144 @@ struct SavedGeometry {
 
 struct MiniModeState(Mutex<SavedGeometry>);
 
+const ANIM_STEPS: u32 = 20;
+const ANIM_STEP_MS: u64 = 12; // ~240ms total
+
+/// Ease-out cubic: fast start, smooth deceleration
+fn ease_out(t: f64) -> f64 {
+    1.0 - (1.0 - t).powi(3)
+}
+
+/// Linearly interpolate between two values
+fn lerp(from: f64, to: f64, t: f64) -> f64 {
+    from + (to - from) * t
+}
+
+/// Animate a window from its current size/position to a target over ANIM_STEPS
+fn animate_window(
+    win: tauri::WebviewWindow,
+    from_w: f64, from_h: f64, from_x: f64, from_y: f64,
+    to_w: f64, to_h: f64, to_x: f64, to_y: f64,
+) {
+    std::thread::spawn(move || {
+        for i in 1..=ANIM_STEPS {
+            let t = ease_out(i as f64 / ANIM_STEPS as f64);
+            let w = lerp(from_w, to_w, t);
+            let h = lerp(from_h, to_h, t);
+            let x = lerp(from_x, to_x, t);
+            let y = lerp(from_y, to_y, t);
+            let _ = win.set_size(tauri::LogicalSize::new(w, h));
+            let _ = win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+            std::thread::sleep(std::time::Duration::from_millis(ANIM_STEP_MS));
+        }
+    });
+}
+
 #[tauri::command]
 fn enter_mini_mode(window: tauri::WebviewWindow, state: tauri::State<'_, MiniModeState>) {
-    // Save current geometry only if it's larger than mini size
-    if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
-        let scale = window.scale_factor().unwrap_or(1.0);
-        let logical_w = size.width as f64 / scale;
-        let logical_h = size.height as f64 / scale;
-        if logical_w > 500.0 && logical_h > 400.0 {
-            let mut geo = state.0.lock().unwrap();
-            geo.x = pos.x as f64;
-            geo.y = pos.y as f64;
-            geo.width = logical_w;
-            geo.height = logical_h;
-        }
+    let scale = window.scale_factor().unwrap_or(1.0);
+
+    // Read current geometry
+    let (from_w, from_h, from_x, from_y) =
+        if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
+            let lw = size.width as f64 / scale;
+            let lh = size.height as f64 / scale;
+            (lw, lh, pos.x as f64, pos.y as f64)
+        } else {
+            (1200.0, 800.0, 0.0, 0.0)
+        };
+
+    // Save geometry only if it's a full-sized window
+    if from_w > 500.0 && from_h > 400.0 {
+        let mut geo = state.0.lock().unwrap();
+        geo.x = from_x;
+        geo.y = from_y;
+        geo.width = from_w;
+        geo.height = from_h;
     }
 
-    // Navigate first, then resize after a short delay so mini UI loads before shrinking
+    // Compute target position (top-right of current monitor)
+    let (to_x, to_y) = if let Some(monitor) = window.current_monitor().ok().flatten() {
+        let mon_pos = monitor.position();
+        let mon_size = monitor.size();
+        let ms = monitor.scale_factor();
+        let mon_w = mon_size.width as f64 / ms;
+        let x = mon_pos.x as f64 + (mon_w - 400.0) * ms;
+        let y = mon_pos.y as f64 + 40.0 * ms;
+        (x, y)
+    } else {
+        (from_x, from_y)
+    };
+
+    // Navigate first, allow mini UI to start loading
     let _ = window.eval("window.location.href='/mini'");
+
+    // Relax min-size so we can animate down
+    let _ = window.set_min_size(Some(tauri::LogicalSize::new(360.0, 340.0)));
+
     let win = window.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        let _ = win.set_min_size(Some(tauri::LogicalSize::new(360.0, 340.0)));
-        let _ = win.set_size(tauri::LogicalSize::new(380.0, 360.0));
-        if let Some(monitor) = win.current_monitor().ok().flatten() {
-            let mon_pos = monitor.position();
-            let mon_size = monitor.size();
-            let scale = monitor.scale_factor();
-            let mon_w = mon_size.width as f64 / scale;
-            let x = mon_pos.x as f64 + (mon_w - 400.0) * scale;
-            let y = mon_pos.y as f64 + 40.0 * scale;
-            let _ = win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
-        }
+        // Brief pause to let the page navigation begin
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        // Animate to mini size
+        let anim_win = win.clone();
+        animate_window(anim_win, from_w, from_h, from_x, from_y, 380.0, 360.0, to_x, to_y);
+        // Wait for animation to finish, then set always-on-top
+        std::thread::sleep(std::time::Duration::from_millis(ANIM_STEPS as u64 * ANIM_STEP_MS + 50));
         let _ = win.set_always_on_top(true);
     });
 }
 
 #[tauri::command]
 fn exit_mini_mode(window: tauri::WebviewWindow, state: tauri::State<'_, MiniModeState>) {
-    // Restore min-size constraints first — must happen before set_size
-    let _ = window.set_min_size(Some(tauri::LogicalSize::new(800.0, 600.0)));
+    let scale = window.scale_factor().unwrap_or(1.0);
 
-    // Restore saved geometry (fall back to default 1200x800 if never saved)
-    {
+    // Read current (mini) geometry
+    let (from_w, from_h, from_x, from_y) =
+        if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
+            (size.width as f64 / scale, size.height as f64 / scale, pos.x as f64, pos.y as f64)
+        } else {
+            (380.0, 360.0, 0.0, 0.0)
+        };
+
+    // Read target geometry
+    let (to_w, to_h, to_x, to_y) = {
         let geo = state.0.lock().unwrap();
         if geo.width > 500.0 && geo.height > 400.0 {
-            let _ = window.set_size(tauri::LogicalSize::new(geo.width, geo.height));
-            let _ = window.set_position(tauri::PhysicalPosition::new(geo.x as i32, geo.y as i32));
+            (geo.width, geo.height, geo.x, geo.y)
         } else {
-            let _ = window.set_size(tauri::LogicalSize::new(1200.0, 800.0));
-            let _ = window.center();
+            // No saved geometry — target center of screen
+            let center_x = if let Some(monitor) = window.current_monitor().ok().flatten() {
+                let mon_pos = monitor.position();
+                let mon_size = monitor.size();
+                let ms = monitor.scale_factor();
+                let mon_w = mon_size.width as f64 / ms;
+                let cx = mon_pos.x as f64 + (mon_w - 1200.0) / 2.0 * ms;
+                let cy = mon_pos.y as f64 + ((mon_size.height as f64 / ms - 800.0) / 2.0) * ms;
+                (cx, cy)
+            } else {
+                (100.0, 100.0)
+            };
+            (1200.0, 800.0, center_x.0, center_x.1)
         }
-    }
+    };
 
     let _ = window.set_always_on_top(false);
+    // Navigate to full view
     let _ = window.eval("window.location.href='/'");
+    // Relax min-size for animation (current min is 360x340, need to go up)
+    // We'll set the final min-size after animation completes
+    let _ = window.set_min_size::<tauri::LogicalSize<f64>>(None);
+
+    let win = window.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        let anim_win = win.clone();
+        animate_window(anim_win, from_w, from_h, from_x, from_y, to_w, to_h, to_x, to_y);
+        // Restore min-size after animation
+        std::thread::sleep(std::time::Duration::from_millis(ANIM_STEPS as u64 * ANIM_STEP_MS + 50));
+        let _ = win.set_min_size(Some(tauri::LogicalSize::new(800.0, 600.0)));
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
