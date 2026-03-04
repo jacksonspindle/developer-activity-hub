@@ -174,7 +174,6 @@ pub fn run() {
     tauri::Builder::default()
         .manage(MiniModeState(Mutex::new(SavedGeometry::default())))
         .invoke_handler(tauri::generate_handler![enter_mini_mode, exit_mini_mode])
-        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
