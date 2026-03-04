@@ -304,7 +304,11 @@ pub fn run() {
                 }
             }
 
-            // Show the window (window-state plugin may have repositioned it already)
+            // Always start in full-size mode (window-state plugin may have saved mini dimensions)
+            let _ = window.set_min_size(Some(tauri::LogicalSize::new(800.0, 600.0)));
+            let _ = window.set_size(tauri::LogicalSize::new(1200.0, 800.0));
+            let _ = window.set_always_on_top(false);
+            let _ = window.center();
             let _ = window.show();
 
             Ok(())
