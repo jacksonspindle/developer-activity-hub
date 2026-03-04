@@ -18,7 +18,7 @@ export default function MiniPlayer() {
   const { data: githubData } = useGitHubStats();
   const [dayDetail, setDayDetail] = useState<DayDetailResponse | null>(null);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toLocaleDateString("en-CA");
 
   const fetchDayDetail = useCallback(() => {
     fetch(`/api/day-detail?date=${todayStr}`)
@@ -34,16 +34,22 @@ export default function MiniPlayer() {
   }, [fetchDayDetail]);
 
   const todayUsage = useMemo(() => {
+    if (dayDetail) {
+      return { tokens: dayDetail.totalTokens, sessions: dayDetail.totalSessions };
+    }
     if (!usageData) return { tokens: 0, sessions: 0 };
     const day = usageData.daily.find((d) => d.date === todayStr);
     return { tokens: day?.tokens ?? 0, sessions: day?.sessions ?? 0 };
-  }, [usageData, todayStr]);
+  }, [dayDetail, usageData, todayStr]);
 
   const todayGitHub = useMemo(() => {
+    if (dayDetail?.github) {
+      return { commits: dayDetail.github.commits.length };
+    }
     if (!githubData) return { commits: 0 };
     const day = githubData.daily.find((d) => d.date === todayStr);
     return { commits: day?.commits ?? 0 };
-  }, [githubData, todayStr]);
+  }, [dayDetail, githubData, todayStr]);
 
   const streak = githubData?.streaks.currentCombined.days ?? 0;
 

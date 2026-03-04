@@ -342,17 +342,23 @@ async function loadCache(): Promise<GitHubBulkStats | null> {
   return null;
 }
 
+async function loadStaleCache(): Promise<GitHubBulkStats | null> {
+  try {
+    const raw = await fs.readFile(CACHE_PATH, "utf-8");
+    return JSON.parse(raw) as GitHubBulkStats;
+  } catch {
+    return null;
+  }
+}
+
+let revalidating = false;
+
 async function saveCache(stats: GitHubBulkStats): Promise<void> {
   await fs.mkdir(path.dirname(CACHE_PATH), { recursive: true });
   await fs.writeFile(CACHE_PATH, JSON.stringify(stats, null, 2));
 }
 
-export async function loadGitHubBulkStats(force = false): Promise<GitHubBulkStats> {
-  if (!force) {
-    const cached = await loadCache();
-    if (cached) return cached;
-  }
-
+async function revalidateCache(): Promise<GitHubBulkStats> {
   // Fetch all data in parallel
   const [commits, prsOpened, prsReviewed, issuesCreated] = await Promise.all([
     fetchCommits90Days(),
@@ -483,4 +489,31 @@ export async function loadGitHubBulkStats(force = false): Promise<GitHubBulkStat
 
   await saveCache(stats);
   return stats;
+}
+
+export async function loadGitHubBulkStats(force = false): Promise<GitHubBulkStats> {
+  // force=true → fetch synchronously
+  if (force) {
+    return revalidateCache();
+  }
+
+  // Fresh cache → return it
+  const fresh = await loadCache();
+  if (fresh) return fresh;
+
+  // Stale cache → return immediately, revalidate in background
+  const stale = await loadStaleCache();
+  if (stale) {
+    if (!revalidating) {
+      revalidating = true;
+      revalidateCache()
+        .then(() => console.log("[github-bulk] background revalidation complete"))
+        .catch((err) => console.error("[github-bulk] background revalidation failed:", err))
+        .finally(() => { revalidating = false; });
+    }
+    return stale;
+  }
+
+  // No cache at all → fetch synchronously
+  return revalidateCache();
 }
