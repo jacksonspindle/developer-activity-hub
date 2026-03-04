@@ -102,7 +102,7 @@ fn enter_mini_mode(window: tauri::WebviewWindow, state: tauri::State<'_, MiniMod
     let _ = window.eval("window.location.href='/mini'");
 
     // Relax min-size so we can animate down
-    let _ = window.set_min_size(Some(tauri::LogicalSize::new(320.0, 220.0)));
+    let _ = window.set_min_size(Some(tauri::LogicalSize::new(320.0, 190.0)));
 
     let win = window.clone();
     std::thread::spawn(move || {
@@ -110,7 +110,7 @@ fn enter_mini_mode(window: tauri::WebviewWindow, state: tauri::State<'_, MiniMod
         std::thread::sleep(std::time::Duration::from_millis(150));
         // Animate to mini size
         let anim_win = win.clone();
-        animate_window(anim_win, from_w, from_h, from_x, from_y, 340.0, 240.0, to_x, to_y);
+        animate_window(anim_win, from_w, from_h, from_x, from_y, 340.0, 210.0, to_x, to_y);
         // Wait for animation to finish, then set always-on-top
         std::thread::sleep(std::time::Duration::from_millis(ANIM_STEPS as u64 * ANIM_STEP_MS + 50));
         let _ = win.set_always_on_top(true);
