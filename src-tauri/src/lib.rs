@@ -222,11 +222,13 @@ pub fn run() {
                 });
 
             // Use dedicated tray icon (template image for macOS menu bar)
-            let tray_icon_bytes = include_bytes!("../icons/tray-icon.png");
-            if let Ok(img) = tauri::image::Image::from_bytes(tray_icon_bytes) {
+            {
+                let raw = include_bytes!("../icons/tray-icon.rgba");
+                let width = u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]);
+                let height = u32::from_le_bytes([raw[4], raw[5], raw[6], raw[7]]);
+                let rgba = raw[8..].to_vec();
+                let img = tauri::image::Image::new_owned(rgba, width, height);
                 tray_builder = tray_builder.icon(img).icon_as_template(true);
-            } else if let Some(icon) = app.default_window_icon() {
-                tray_builder = tray_builder.icon(icon.clone()).icon_as_template(true);
             }
 
             tray_builder.build(app)?;
