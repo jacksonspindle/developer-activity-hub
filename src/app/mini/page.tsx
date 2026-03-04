@@ -122,15 +122,21 @@ export default function MiniPlayer() {
         transform: mounted && !exiting ? "scale(1)" : "scale(0.95)",
       }}
     >
-      {/* Draggable title bar */}
-      <div
-        data-tauri-drag-region
-        className="flex items-center justify-between px-4 pt-8 pb-1"
-      >
+      {/* Traffic light row with expand button */}
+      <div data-tauri-drag-region className="flex items-center justify-end px-3 pt-1.5 h-8">
+        <button
+          onClick={handleExpand}
+          className="rounded-md p-1 text-gray-500 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Title */}
+      <div data-tauri-drag-region className="px-4 pb-1">
         <span className="text-[11px] font-medium text-gray-400 pointer-events-none">
           Today &mdash; {dateLabel}
         </span>
-        <div className="h-1 w-8 rounded-full bg-white/10" />
       </div>
 
       {/* Stats row */}
@@ -214,16 +220,6 @@ export default function MiniPlayer() {
         </div>
       </div>
 
-      {/* Expand button */}
-      <div className="flex justify-center pt-1.5 pb-1">
-        <button
-          onClick={handleExpand}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-1.5 text-[11px] text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
-        >
-          <Maximize2 className="h-3 w-3" />
-          Expand
-        </button>
-      </div>
     </div>
   );
 }
