@@ -84,14 +84,15 @@ fn enter_mini_mode(window: tauri::WebviewWindow, state: tauri::State<'_, MiniMod
         geo.height = from_h;
     }
 
-    // Compute target position (top-right of current monitor)
+    // Compute target position (top-right of current monitor, flush with edges)
     let (to_x, to_y) = if let Some(monitor) = window.current_monitor().ok().flatten() {
         let mon_pos = monitor.position();
         let mon_size = monitor.size();
         let ms = monitor.scale_factor();
         let mon_w = mon_size.width as f64 / ms;
-        let x = mon_pos.x as f64 + (mon_w - 400.0) * ms;
-        let y = mon_pos.y as f64 + 40.0 * ms;
+        let margin = 6.0; // small gap from screen edge
+        let x = mon_pos.x as f64 + (mon_w - 340.0 - margin) * ms;
+        let y = mon_pos.y as f64 + 38.0 * ms; // just below menu bar
         (x, y)
     } else {
         (from_x, from_y)
