@@ -201,7 +201,15 @@ pub fn run() {
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(move |app, event| match event.id().as_ref() {
-                    "show" => show_window(app),
+                    "show" => {
+                        if let Some(win) = app.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.unminimize();
+                            let _ = win.set_focus();
+                            // Exit mini mode if active — invoke the command
+                            let _ = win.eval("window.__TAURI_INTERNALS__?.invoke('exit_mini_mode')");
+                        }
+                    }
                     "mini" => {
                         if let Some(win) = app.get_webview_window("main") {
                             let _ = win.show();
