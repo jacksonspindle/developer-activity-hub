@@ -28,6 +28,7 @@ import {
   RefreshCw,
   CalendarDays,
   Minimize2,
+  Loader2,
 } from "lucide-react";
 import { getCurrentWeekString } from "@/lib/week-utils";
 
@@ -59,8 +60,14 @@ export default function Home() {
 
   useEffect(() => {
     setIsTauri(typeof window !== "undefined" && !!(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__);
-    requestAnimationFrame(() => setMounted(true));
   }, []);
+
+  // Only reveal page once data is loaded to prevent layout jitter
+  useEffect(() => {
+    if (!mounted && usageData) {
+      requestAnimationFrame(() => setMounted(true));
+    }
+  }, [usageData, mounted]);
 
   const {
     cardOrder,
@@ -310,6 +317,13 @@ case "pr-issues":
         transform: mounted && !miniTransition ? "scale(1)" : "scale(1.02)",
       }}
     >
+      {/* Loading spinner while data loads */}
+      {!usageData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+        </div>
+      )}
+
       {/* Multi-layer background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(74,222,128,0.04)_0%,transparent_60%)]" />
@@ -378,8 +392,6 @@ case "pr-issues":
             {usageError}
           </div>
         )}
-
-        {loading && <LoadingSkeleton />}
 
         {usageData && (
           <DashboardGrid
