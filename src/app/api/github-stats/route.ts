@@ -5,7 +5,9 @@ export async function GET(request: NextRequest) {
   try {
     const force = request.nextUrl.searchParams.get("force") === "1";
     const stats = await loadGitHubBulkStats(force);
-    return NextResponse.json(stats);
+    return NextResponse.json(stats, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err) {
     console.error("GitHub bulk stats failed:", err);
     return NextResponse.json(
