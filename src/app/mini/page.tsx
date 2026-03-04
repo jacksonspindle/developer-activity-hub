@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
-import { Maximize2, Zap, GitCommitHorizontal, Flame, Loader2, TrendingUp } from "lucide-react";
+import { Maximize2, Zap, GitCommitHorizontal, Flame, Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DayDetailResponse } from "@/lib/types";
 import { computeScoreSummary, type DailyScoreInput } from "@/lib/productivity-score";
 import type { CombinedDailyData } from "@/lib/github-types";
@@ -23,6 +23,18 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+function offsetDate(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString("en-CA");
+}
+
+function formatDateLabel(dateStr: string, todayStr: string): string {
+  if (dateStr === todayStr) return "Today";
+  if (dateStr === offsetDate(todayStr, -1)) return "Yesterday";
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export default function MiniPlayer() {
   const { data: usageData } = useUsageData();
   const { data: githubData } = useGitHubStats();
@@ -30,41 +42,46 @@ export default function MiniPlayer() {
   const [mounted, setMounted] = useState(false);
   const [exiting, setExiting] = useState(false);
 
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const isToday = selectedDate === todayStr;
+
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
-  const todayStr = new Date().toLocaleDateString("en-CA");
-
   const fetchDayDetail = useCallback(() => {
-    fetch(`/api/day-detail?date=${todayStr}`)
+    setDayDetail(null);
+    fetch(`/api/day-detail?date=${selectedDate}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setDayDetail(d))
       .catch(() => {});
-  }, [todayStr]);
+  }, [selectedDate]);
 
   useEffect(() => {
     fetchDayDetail();
-    const id = setInterval(fetchDayDetail, 30 * 1000);
-    return () => clearInterval(id);
-  }, [fetchDayDetail]);
+    // Only auto-refresh for today
+    if (selectedDate === todayStr) {
+      const id = setInterval(fetchDayDetail, 30 * 1000);
+      return () => clearInterval(id);
+    }
+  }, [fetchDayDetail, selectedDate, todayStr]);
 
-  const todayUsage = useMemo(() => {
+  const dayUsage = useMemo(() => {
     if (!dayDetail) return { tokens: 0, sessions: 0 };
     return { tokens: dayDetail.totalTokens, sessions: dayDetail.totalSessions };
   }, [dayDetail]);
 
-  const todayGitHub = useMemo(() => {
+  const dayGitHub = useMemo(() => {
     if (!dayDetail?.github) return { commits: 0 };
-    const count = dayDetail.github.commits.filter((c) => getLocalDate(c.timestamp) === todayStr).length;
+    const count = dayDetail.github.commits.filter((c) => getLocalDate(c.timestamp) === selectedDate).length;
     return { commits: count };
-  }, [dayDetail, todayStr]);
+  }, [dayDetail, selectedDate]);
 
   const streak = githubData?.streaks.currentCombined.days ?? 0;
 
-  const todayScore = useMemo(() => {
+  const dayScore = useMemo(() => {
     if (!usageData || !githubData || !dayDetail) return null;
-    const combinedDaily: CombinedDailyData[] = [];
     const map = new Map<string, CombinedDailyData>();
     for (const d of usageData.daily) {
       map.set(d.date, { date: d.date, tokens: d.tokens, commits: 0, prsOpened: 0, prsMerged: 0, issuesCreated: 0 });
@@ -80,9 +97,7 @@ export default function MiniPlayer() {
         map.set(d.date, { date: d.date, tokens: 0, commits: d.commits, prsOpened: d.prsOpened, prsMerged: d.prsMerged, issuesCreated: d.issuesCreated });
       }
     }
-    for (const v of map.values()) combinedDaily.push(v);
-    combinedDaily.sort((a, b) => a.date.localeCompare(b.date));
-
+    const combinedDaily = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
     const usageLookup = new Map<string, { sessions: number; toolCalls: number }>();
     for (const d of usageData.daily) {
       usageLookup.set(d.date, { sessions: d.sessions, toolCalls: d.toolCalls });
@@ -92,10 +107,11 @@ export default function MiniPlayer() {
       return { date: d.date, commits: d.commits, prsMerged: d.prsMerged, prsOpened: d.prsOpened, issuesCreated: d.issuesCreated, tokens: d.tokens, sessions: usage?.sessions ?? 0, toolCalls: usage?.toolCalls ?? 0 };
     });
     const summary = computeScoreSummary(inputs, streak);
-    return summary.current;
-  }, [usageData, githubData, dayDetail, streak]);
+    // Find the score for the selected date
+    const dayEntry = summary.daily.find((d) => d.date === selectedDate);
+    return dayEntry?.score ?? 0;
+  }, [usageData, githubData, dayDetail, streak, selectedDate]);
 
-  // Derive hourly activity from today's tokens + commits
   const hourlyData = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, i) => ({
       hour: i,
@@ -103,7 +119,6 @@ export default function MiniPlayer() {
       tokens: 0,
       commits: 0,
     }));
-    // Use hourly token data from raw JSONL parsing (includes active sessions)
     if (dayDetail?.hourlyTokens) {
       for (const [hourStr, tokens] of Object.entries(dayDetail.hourlyTokens)) {
         const h = Number(hourStr);
@@ -114,25 +129,18 @@ export default function MiniPlayer() {
     }
     if (dayDetail?.github?.commits) {
       for (const c of dayDetail.github.commits) {
-        if (getLocalDate(c.timestamp) !== todayStr) continue;
+        if (getLocalDate(c.timestamp) !== selectedDate) continue;
         const h = getLocalHour(c.timestamp);
         hours[h].commits += 1;
       }
     }
-    // Compute activity as normalized score: tokens (scaled) + commits
-    // Each 10K tokens ≈ 1 commit in weight
     for (const h of hours) {
       h.activity = Math.round(h.tokens / 10000) + h.commits;
     }
     return hours;
-  }, [dayDetail]);
+  }, [dayDetail, selectedDate]);
 
   const currentHour = new Date().getHours();
-
-  const dateLabel = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 
   const handleExpand = () => {
     setExiting(true);
@@ -145,10 +153,15 @@ export default function MiniPlayer() {
     }, 200);
   };
 
+  const goBack = () => setSelectedDate((d) => offsetDate(d, -1));
+  const goForward = () => {
+    if (!isToday) setSelectedDate((d) => offsetDate(d, 1));
+  };
+
   const stats = [
-    { label: "Score", value: todayScore ?? 0, icon: TrendingUp, color: "text-cyan-400", loading: todayScore === null },
-    { label: "Tokens", value: formatTokens(todayUsage.tokens), icon: Zap, color: "text-green-400", loading: !dayDetail },
-    { label: "Commits", value: todayGitHub.commits, icon: GitCommitHorizontal, color: "text-purple-400", loading: !dayDetail },
+    { label: "Score", value: dayScore ?? 0, icon: TrendingUp, color: "text-cyan-400", loading: dayScore === null },
+    { label: "Tokens", value: formatTokens(dayUsage.tokens), icon: Zap, color: "text-green-400", loading: !dayDetail },
+    { label: "Commits", value: dayGitHub.commits, icon: GitCommitHorizontal, color: "text-purple-400", loading: !dayDetail },
     { label: "Streak", value: streak, icon: Flame, color: "text-amber-400", loading: false },
   ];
 
@@ -170,11 +183,27 @@ export default function MiniPlayer() {
         </button>
       </div>
 
-      {/* Title */}
-      <div data-tauri-drag-region className="px-4 pb-1">
-        <span className="text-[11px] font-medium text-gray-400 pointer-events-none">
-          Today &mdash; {dateLabel}
+      {/* Title with day navigation */}
+      <div data-tauri-drag-region className="flex items-center justify-between px-3 pb-1">
+        <button
+          onClick={goBack}
+          className="rounded-md p-0.5 text-gray-500 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <span
+          className="text-[11px] font-medium text-gray-400 cursor-pointer hover:text-gray-200 transition-colors"
+          onClick={() => setSelectedDate(todayStr)}
+        >
+          {formatDateLabel(selectedDate, todayStr)} &mdash; {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
+        <button
+          onClick={goForward}
+          disabled={isToday}
+          className="rounded-md p-0.5 text-gray-500 hover:bg-white/[0.08] hover:text-gray-200 transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       {/* Stats row */}
@@ -195,7 +224,7 @@ export default function MiniPlayer() {
       {/* Hourly activity chart */}
       <div className="px-3 pt-2">
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2 pt-1.5 pb-1">
-          <span className="text-[10px] text-gray-500 px-1">Today&apos;s activity by hour</span>
+          <span className="text-[10px] text-gray-500 px-1">Activity by hour</span>
           <div className="h-[56px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hourlyData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
@@ -237,7 +266,7 @@ export default function MiniPlayer() {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   shape={(props: any) => {
                     const { x, y, width, height, payload } = props;
-                    const isCurrent = payload.hour === currentHour;
+                    const isCurrent = isToday && payload.hour === currentHour;
                     const isEmpty = payload.activity === 0;
                     return (
                       <rect
