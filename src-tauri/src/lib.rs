@@ -178,7 +178,8 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // --- System tray ---
-            let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Show Dashboard", true, None::<&str>)?;
+            let mini = MenuItem::with_id(app, "mini", "Mini Player", true, None::<&str>)?;
             let always_on_top = CheckMenuItem::with_id(
                 app,
                 "always_on_top",
@@ -188,19 +189,27 @@ pub fn run() {
                 None::<&str>,
             )?;
             let separator = PredefinedMenuItem::separator(app)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit Dev Activity Hub", true, None::<&str>)?;
 
             let menu = MenuBuilder::new(app)
-                .items(&[&show, &always_on_top, &separator, &quit])
+                .items(&[&show, &mini, &always_on_top, &separator, &quit])
                 .build()?;
 
             let aot = always_on_top.clone();
 
             let mut tray_builder = TrayIconBuilder::new()
                 .menu(&menu)
-                .show_menu_on_left_click(false)
+                .show_menu_on_left_click(true)
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "show" => show_window(app),
+                    "mini" => {
+                        if let Some(win) = app.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.set_focus();
+                            // Trigger enter_mini_mode via eval
+                            let _ = win.eval("window.__TAURI_INTERNALS__?.invoke('enter_mini_mode')");
+                        }
+                    }
                     "always_on_top" => {
                         if let Some(win) = app.get_webview_window("main") {
                             let on_top = aot.is_checked().unwrap_or(false);
@@ -209,16 +218,6 @@ pub fn run() {
                     }
                     "quit" => app.exit(0),
                     _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        show_window(tray.app_handle());
-                    }
                 });
 
             // Use dedicated tray icon (template image for macOS menu bar)
