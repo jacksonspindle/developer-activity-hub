@@ -125,7 +125,7 @@ export default function MiniPlayer() {
       {/* Draggable title bar */}
       <div
         data-tauri-drag-region
-        className="flex items-center justify-between px-4 pt-3 pb-1"
+        className="flex items-center justify-between px-4 pt-8 pb-1"
       >
         <span className="text-[11px] font-medium text-gray-400 pointer-events-none">
           Today &mdash; {dateLabel}
