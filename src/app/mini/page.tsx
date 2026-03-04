@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
-import { Maximize2, Zap, MonitorSmartphone, GitCommitHorizontal, Flame, Loader2 } from "lucide-react";
+import { Maximize2, Zap, GitCommitHorizontal, Flame, Loader2 } from "lucide-react";
 import type { DayDetailResponse } from "@/lib/types";
 
 function getLocalHour(timestamp: string | number): number {
@@ -71,11 +71,24 @@ export default function MiniPlayer() {
     }));
     if (dayDetail?.sessions) {
       for (const s of dayDetail.sessions) {
-        if (getLocalDate(s.timestamp) !== todayStr) continue;
         const h = getLocalHour(s.timestamp);
-        hours[h].activity += 1;
-        hours[h].sessions += 1;
-        hours[h].tokens += s.totalTokens;
+        // Spread tokens across active hours based on session duration
+        if (s.durationMs > 0) {
+          const startH = h;
+          const endH = getLocalHour(s.timestamp + s.durationMs);
+          const spanHours = startH <= endH ? endH - startH + 1 : (24 - startH) + endH + 1;
+          const tokensPerHour = Math.round(s.totalTokens / spanHours);
+          for (let i = 0; i < spanHours; i++) {
+            const hr = (startH + i) % 24;
+            hours[hr].activity += i === 0 ? 1 : 0;
+            hours[hr].sessions += i === 0 ? 1 : 0;
+            hours[hr].tokens += tokensPerHour;
+          }
+        } else {
+          hours[h].activity += 1;
+          hours[h].sessions += 1;
+          hours[h].tokens += s.totalTokens;
+        }
       }
     }
     if (dayDetail?.github?.commits) {
@@ -109,7 +122,6 @@ export default function MiniPlayer() {
 
   const stats = [
     { label: "Tokens", value: formatTokens(todayUsage.tokens), icon: Zap, color: "text-green-400" },
-    { label: "Sessions", value: todayUsage.sessions, icon: MonitorSmartphone, color: "text-blue-400" },
     { label: "Commits", value: todayGitHub.commits, icon: GitCommitHorizontal, color: "text-purple-400" },
     { label: "Streak", value: streak, icon: Flame, color: "text-amber-400" },
   ];
@@ -180,13 +192,13 @@ export default function MiniPlayer() {
                   content={({ active, payload }) => {
                     if (!active || !payload?.[0]) return null;
                     const d = payload[0].payload;
-                    if (d.sessions === 0 && d.commits === 0) return null;
+                    if (d.tokens === 0 && d.commits === 0) return null;
                     const hour = d.hour;
                     const label = `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}–${(hour + 1) % 12 || 12}${hour + 1 < 12 || hour + 1 === 24 ? "am" : "pm"}`;
                     return (
                       <div className="rounded-lg border border-white/10 bg-gray-900/95 px-2.5 py-1.5 text-[10px] shadow-lg backdrop-blur">
                         <div className="font-medium text-gray-300 mb-0.5">{label}</div>
-                        {d.sessions > 0 && <div className="text-blue-400">{d.sessions} session{d.sessions !== 1 ? "s" : ""} · {formatTokens(d.tokens)} tokens</div>}
+                        {d.tokens > 0 && <div className="text-green-400">{formatTokens(d.tokens)} tokens</div>}
                         {d.commits > 0 && <div className="text-purple-400">{d.commits} commit{d.commits !== 1 ? "s" : ""}</div>}
                       </div>
                     );
