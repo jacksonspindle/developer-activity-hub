@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis } from "recharts";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
-import { Maximize2, Zap, MonitorSmartphone, GitCommitHorizontal, Flame } from "lucide-react";
+import { Maximize2, Zap, MonitorSmartphone, GitCommitHorizontal, Flame, Loader2 } from "lucide-react";
 import type { DayDetailResponse } from "@/lib/types";
 
 function formatTokens(n: number): string {
@@ -40,22 +40,14 @@ export default function MiniPlayer() {
   }, [fetchDayDetail]);
 
   const todayUsage = useMemo(() => {
-    if (dayDetail) {
-      return { tokens: dayDetail.totalTokens, sessions: dayDetail.totalSessions };
-    }
-    if (!usageData) return { tokens: 0, sessions: 0 };
-    const day = usageData.daily.find((d) => d.date === todayStr);
-    return { tokens: day?.tokens ?? 0, sessions: day?.sessions ?? 0 };
-  }, [dayDetail, usageData, todayStr]);
+    if (!dayDetail) return { tokens: 0, sessions: 0 };
+    return { tokens: dayDetail.totalTokens, sessions: dayDetail.totalSessions };
+  }, [dayDetail]);
 
   const todayGitHub = useMemo(() => {
-    if (dayDetail?.github) {
-      return { commits: dayDetail.github.commits.length };
-    }
-    if (!githubData) return { commits: 0 };
-    const day = githubData.daily.find((d) => d.date === todayStr);
-    return { commits: day?.commits ?? 0 };
-  }, [dayDetail, githubData, todayStr]);
+    if (!dayDetail?.github) return { commits: 0 };
+    return { commits: dayDetail.github.commits.length };
+  }, [dayDetail]);
 
   const streak = githubData?.streaks.currentCombined.days ?? 0;
 
@@ -123,8 +115,8 @@ export default function MiniPlayer() {
             className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] py-2.5"
           >
             <s.icon className={`h-3.5 w-3.5 mb-0.5 ${s.color}`} />
-            <span className="text-base font-bold tracking-tight text-white leading-none">
-              {s.value}
+            <span className="text-base font-bold tracking-tight text-white leading-none flex items-center justify-center">
+              {!dayDetail && s.label !== "Streak" ? <Loader2 className="h-4 w-4 animate-spin text-gray-500" /> : s.value}
             </span>
             <span className="text-[10px] text-gray-500 mt-0.5">{s.label}</span>
           </div>
