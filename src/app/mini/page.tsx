@@ -17,6 +17,12 @@ export default function MiniPlayer() {
   const { data: usageData } = useUsageData();
   const { data: githubData } = useGitHubStats();
   const [dayDetail, setDayDetail] = useState<DayDetailResponse | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setMounted(true));
+  }, []);
 
   const todayStr = new Date().toLocaleDateString("en-CA");
 
@@ -73,11 +79,14 @@ export default function MiniPlayer() {
   });
 
   const handleExpand = () => {
-    (
-      window as unknown as {
-        __TAURI_INTERNALS__: { invoke: (cmd: string) => void };
-      }
-    ).__TAURI_INTERNALS__.invoke("exit_mini_mode");
+    setExiting(true);
+    setTimeout(() => {
+      (
+        window as unknown as {
+          __TAURI_INTERNALS__: { invoke: (cmd: string) => void };
+        }
+      ).__TAURI_INTERNALS__.invoke("exit_mini_mode");
+    }, 200);
   };
 
   const stats = [
@@ -88,7 +97,13 @@ export default function MiniPlayer() {
   ];
 
   return (
-    <div className="h-screen w-screen select-none overflow-hidden bg-background">
+    <div
+      className="h-screen w-screen select-none overflow-hidden bg-background transition-all duration-200 ease-out"
+      style={{
+        opacity: mounted && !exiting ? 1 : 0,
+        transform: mounted && !exiting ? "scale(1)" : "scale(0.95)",
+      }}
+    >
       {/* Draggable title bar */}
       <div
         data-tauri-drag-region
