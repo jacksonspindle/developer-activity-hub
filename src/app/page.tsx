@@ -316,8 +316,22 @@ case "pr-issues":
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_50%,rgba(96,165,250,0.02)_0%,transparent_60%)]" />
       </div>
 
-      {/* Draggable title bar region */}
-      <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-12 z-50" />
+      {/* Draggable title bar region with mini button */}
+      <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-12 z-50 flex items-center justify-end px-3">
+        {isTauri && (
+          <button
+            onClick={() => {
+              setMiniTransition(true);
+              setTimeout(() => {
+                (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string) => void } }).__TAURI_INTERNALS__.invoke("enter_mini_mode");
+              }, 200);
+            }}
+            className="rounded-md p-1.5 text-gray-500 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
+          >
+            <Minimize2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-12">
         {/* Header */}
@@ -355,20 +369,6 @@ case "pr-issues":
                 <CalendarDays className="h-3.5 w-3.5" />
                 Weekly Digest
               </a>
-              {isTauri && (
-                <button
-                  onClick={() => {
-                    setMiniTransition(true);
-                    setTimeout(() => {
-                      (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string) => void } }).__TAURI_INTERNALS__.invoke("enter_mini_mode");
-                    }, 200);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.08] hover:text-gray-200 transition-all"
-                >
-                  <Minimize2 className="h-3.5 w-3.5" />
-                  Mini
-                </button>
-              )}
             </div>
           )}
         </motion.div>
