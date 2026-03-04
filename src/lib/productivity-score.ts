@@ -1,12 +1,12 @@
 // Productivity Score — pure computation, no React
 
 export const SCORE_WEIGHTS = {
-  commits: 30,
+  commits: 35,
   prsMerged: 5,
   prsOpened: 5,
   issuesCreated: 5,
-  tokens: 25,
-  sessions: 20,
+  tokens: 30,
+  sessions: 10,
   toolCalls: 10,
 } as const;
 

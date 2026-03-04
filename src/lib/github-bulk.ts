@@ -196,7 +196,8 @@ async function fetchCommits90Days(): Promise<CommitItem[]> {
     }
   }
 
-  return allCommits;
+  // Filter out merge commits — not real work
+  return allCommits.filter((c) => !/^Merge (pull request|branch) /.test(c.commit.message));
 }
 
 async function fetchPRsOpened90Days(): Promise<IssueItem[]> {

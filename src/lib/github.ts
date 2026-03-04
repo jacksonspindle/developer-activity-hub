@@ -50,32 +50,45 @@ async function ghApi(endpoint: string): Promise<unknown> {
   }
 }
 
+function isMergeCommit(message: string): boolean {
+  return /^Merge (pull request|branch) /.test(message);
+}
+
 async function fetchCommits(date: string): Promise<GitHubCommit[]> {
+  let commits: GitHubCommit[];
+
+  if (isToday(date)) {
+    // For today, prefer repo-level API as primary (no search indexing delay)
+    commits = await fetchTodayCommitsFromRepos(date);
+    // Supplement with search API for repos we might have missed
+    const searchCommits = await fetchCommitsFromSearch(date);
+    const existingShas = new Set(commits.map((c) => c.sha));
+    for (const c of searchCommits) {
+      if (!existingShas.has(c.sha)) {
+        commits.push(c);
+      }
+    }
+  } else {
+    commits = await fetchCommitsFromSearch(date);
+  }
+
+  // Filter out merge commits — they're not real work
+  return commits.filter((c) => !isMergeCommit(c.message));
+}
+
+async function fetchCommitsFromSearch(date: string): Promise<GitHubCommit[]> {
   const q = encodeURIComponent(`author:${USERNAME} author-date:${date}`);
   const data = (await ghApi(
     `/search/commits?q=${q}&per_page=100`
   )) as { items?: Array<{ sha: string; commit: { message: string; author: { date: string } }; html_url: string; repository: { full_name: string } }> } | null;
 
-  const commits: GitHubCommit[] = (data?.items ?? []).map((item) => ({
+  return (data?.items ?? []).map((item) => ({
     repo: item.repository.full_name,
-    sha: item.sha.slice(0, 7),
+    sha: item.sha,
     message: item.commit.message.split("\n")[0],
     url: item.html_url,
     timestamp: item.commit.author.date,
   }));
-
-  // Supplement with repo-level API for today (bypasses search indexing delay)
-  if (isToday(date)) {
-    const repoCommits = await fetchTodayCommitsFromRepos(date);
-    const existingShas = new Set(commits.map((c) => c.sha));
-    for (const c of repoCommits) {
-      if (!existingShas.has(c.sha)) {
-        commits.push(c);
-      }
-    }
-  }
-
-  return commits;
 }
 
 async function fetchTodayCommitsFromRepos(date: string): Promise<GitHubCommit[]> {
@@ -109,7 +122,7 @@ async function fetchTodayCommitsFromRepos(date: string): Promise<GitHubCommit[]>
             if (c.author?.login === USERNAME) {
               commits.push({
                 repo: repo.full_name,
-                sha: c.sha.slice(0, 7),
+                sha: c.sha,
                 message: c.commit.message.split("\n")[0],
                 url: c.html_url,
                 timestamp: c.commit.author.date,

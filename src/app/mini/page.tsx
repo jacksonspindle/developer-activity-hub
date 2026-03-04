@@ -1,11 +1,19 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { BarChart, Bar, ResponsiveContainer, XAxis } from "recharts";
+import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useGitHubStats } from "@/hooks/use-github-stats";
 import { Maximize2, Zap, MonitorSmartphone, GitCommitHorizontal, Flame, Loader2 } from "lucide-react";
 import type { DayDetailResponse } from "@/lib/types";
+
+function getLocalHour(timestamp: string | number): number {
+  return new Date(typeof timestamp === "number" ? timestamp : timestamp).getHours();
+}
+
+function getLocalDate(timestamp: string | number): string {
+  return new Date(typeof timestamp === "number" ? timestamp : timestamp).toLocaleDateString("en-CA");
+}
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -35,7 +43,7 @@ export default function MiniPlayer() {
 
   useEffect(() => {
     fetchDayDetail();
-    const id = setInterval(fetchDayDetail, 2 * 60 * 1000);
+    const id = setInterval(fetchDayDetail, 30 * 1000);
     return () => clearInterval(id);
   }, [fetchDayDetail]);
 
@@ -46,18 +54,36 @@ export default function MiniPlayer() {
 
   const todayGitHub = useMemo(() => {
     if (!dayDetail?.github) return { commits: 0 };
-    return { commits: dayDetail.github.commits.length };
-  }, [dayDetail]);
+    const count = dayDetail.github.commits.filter((c) => getLocalDate(c.timestamp) === todayStr).length;
+    return { commits: count };
+  }, [dayDetail, todayStr]);
 
   const streak = githubData?.streaks.currentCombined.days ?? 0;
 
-  // Derive hourly activity from today's sessions
+  // Derive hourly activity from today's sessions + commits
   const hourlyData = useMemo(() => {
-    const hours = Array.from({ length: 24 }, (_, i) => ({ hour: i, activity: 0 }));
+    const hours = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      activity: 0,
+      sessions: 0,
+      tokens: 0,
+      commits: 0,
+    }));
     if (dayDetail?.sessions) {
       for (const s of dayDetail.sessions) {
-        const h = new Date(s.timestamp).getHours();
+        if (getLocalDate(s.timestamp) !== todayStr) continue;
+        const h = getLocalHour(s.timestamp);
         hours[h].activity += 1;
+        hours[h].sessions += 1;
+        hours[h].tokens += s.totalTokens;
+      }
+    }
+    if (dayDetail?.github?.commits) {
+      for (const c of dayDetail.github.commits) {
+        if (getLocalDate(c.timestamp) !== todayStr) continue;
+        const h = getLocalHour(c.timestamp);
+        hours[h].activity += 1;
+        hours[h].commits += 1;
       }
     }
     return hours;
@@ -143,6 +169,23 @@ export default function MiniPlayer() {
                   axisLine={false}
                   tickLine={false}
                   interval={0}
+                />
+                <Tooltip
+                  cursor={false}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.[0]) return null;
+                    const d = payload[0].payload;
+                    if (d.sessions === 0 && d.commits === 0) return null;
+                    const hour = d.hour;
+                    const label = `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}–${(hour + 1) % 12 || 12}${hour + 1 < 12 || hour + 1 === 24 ? "am" : "pm"}`;
+                    return (
+                      <div className="rounded-lg border border-white/10 bg-gray-900/95 px-2.5 py-1.5 text-[10px] shadow-lg backdrop-blur">
+                        <div className="font-medium text-gray-300 mb-0.5">{label}</div>
+                        {d.sessions > 0 && <div className="text-blue-400">{d.sessions} session{d.sessions !== 1 ? "s" : ""} · {formatTokens(d.tokens)} tokens</div>}
+                        {d.commits > 0 && <div className="text-purple-400">{d.commits} commit{d.commits !== 1 ? "s" : ""}</div>}
+                      </div>
+                    );
+                  }}
                 />
                 <Bar
                   dataKey="activity"
