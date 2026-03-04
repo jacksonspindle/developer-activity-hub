@@ -56,14 +56,73 @@ async function fetchCommits(date: string): Promise<GitHubCommit[]> {
     `/search/commits?q=${q}&per_page=100`
   )) as { items?: Array<{ sha: string; commit: { message: string; author: { date: string } }; html_url: string; repository: { full_name: string } }> } | null;
 
-  if (!data?.items) return [];
-  return data.items.map((item) => ({
+  const commits: GitHubCommit[] = (data?.items ?? []).map((item) => ({
     repo: item.repository.full_name,
     sha: item.sha.slice(0, 7),
     message: item.commit.message.split("\n")[0],
     url: item.html_url,
     timestamp: item.commit.author.date,
   }));
+
+  // Supplement with repo-level API for today (bypasses search indexing delay)
+  if (isToday(date)) {
+    const repoCommits = await fetchTodayCommitsFromRepos(date);
+    const existingShas = new Set(commits.map((c) => c.sha));
+    for (const c of repoCommits) {
+      if (!existingShas.has(c.sha)) {
+        commits.push(c);
+      }
+    }
+  }
+
+  return commits;
+}
+
+async function fetchTodayCommitsFromRepos(date: string): Promise<GitHubCommit[]> {
+  const sinceISO = new Date(date + "T00:00:00").toISOString();
+  let repos: Array<{ full_name: string; pushed_at: string }> = [];
+  try {
+    const result = await ghApi(`/user/repos?type=owner&sort=pushed&direction=desc&per_page=20`);
+    const allRepos = result as Array<{ full_name: string; pushed_at: string }>;
+    if (Array.isArray(allRepos)) {
+      repos = allRepos.filter((r) => r.pushed_at >= sinceISO);
+    }
+  } catch {
+    return [];
+  }
+
+  const commits: GitHubCommit[] = [];
+  await Promise.all(
+    repos.map(async (repo) => {
+      try {
+        const result = await ghApi(
+          `/repos/${repo.full_name}/commits?author=${USERNAME}&since=${sinceISO}&per_page=100`
+        );
+        const items = result as Array<{
+          sha: string;
+          commit: { message: string; author: { date: string } };
+          html_url: string;
+          author: { login: string } | null;
+        }> | null;
+        if (Array.isArray(items)) {
+          for (const c of items) {
+            if (c.author?.login === USERNAME) {
+              commits.push({
+                repo: repo.full_name,
+                sha: c.sha.slice(0, 7),
+                message: c.commit.message.split("\n")[0],
+                url: c.html_url,
+                timestamp: c.commit.author.date,
+              });
+            }
+          }
+        }
+      } catch {
+        // skip repo
+      }
+    })
+  );
+  return commits;
 }
 
 async function fetchIssuesCreated(date: string): Promise<GitHubIssue[]> {
