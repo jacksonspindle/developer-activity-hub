@@ -60,12 +60,11 @@ export default function MiniPlayer() {
 
   const streak = githubData?.streaks.currentCombined.days ?? 0;
 
-  // Derive hourly activity from today's sessions + commits
+  // Derive hourly activity from today's tokens + commits
   const hourlyData = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, i) => ({
       hour: i,
       activity: 0,
-      sessions: 0,
       tokens: 0,
       commits: 0,
     }));
@@ -75,7 +74,6 @@ export default function MiniPlayer() {
         const h = Number(hourStr);
         if (h >= 0 && h < 24 && tokens > 0) {
           hours[h].tokens += tokens;
-          hours[h].activity += 1;
         }
       }
     }
@@ -83,9 +81,13 @@ export default function MiniPlayer() {
       for (const c of dayDetail.github.commits) {
         if (getLocalDate(c.timestamp) !== todayStr) continue;
         const h = getLocalHour(c.timestamp);
-        hours[h].activity += 1;
         hours[h].commits += 1;
       }
+    }
+    // Compute activity as normalized score: tokens (scaled) + commits
+    // Each 10K tokens ≈ 1 commit in weight
+    for (const h of hours) {
+      h.activity = Math.round(h.tokens / 10000) + h.commits;
     }
     return hours;
   }, [dayDetail]);
